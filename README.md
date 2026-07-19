@@ -15,7 +15,7 @@ Fusion ships its own MCP server, but it exposes four broad tools that take raw P
 ## Install
 
 ```bash
-pip install fusion-cad-mcp
+pip install "fusion-cad-mcp @ git+https://github.com/Mfrostbutter/fusion-cad-mcp.git"
 ```
 
 Then point your MCP client at it. For Claude Code or Claude Desktop:
@@ -99,7 +99,7 @@ Four tools answer questions without touching Fusion, so they work with it closed
 The first three ship with the package. `find_api` needs a local copy of Autodesk's help, which is their content and is not redistributed, so you build your own once:
 
 ```bash
-pip install "fusion-cad-mcp[corpus]"
+pip install "fusion-cad-mcp[corpus] @ git+https://github.com/Mfrostbutter/fusion-cad-mcp.git"
 fusion-cad-mcp corpus build --i-accept-autodesk-terms
 ```
 
