@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local Fusion API corpus. Autodesk's content, built per-user, never committed.
+corpus/
+corpus.jsonl
