@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fusion-cad-mcp"
-version = "0.2.0"
+version = "0.2.1"
 description = "Robust MCP server for driving Autodesk Fusion. Wraps Fusion's MCP at 127.0.0.1:27182 with named, agent-friendly tools."
 readme = "README.md"
 license = { text = "MIT" }
@@ -31,6 +31,7 @@ corpus = [
     "requests>=2.31",
     "beautifulsoup4>=4.12",
     "markdownify>=0.13",
+    "lxml>=5.0",
 ]
 dev = [
     "pytest>=8.0",

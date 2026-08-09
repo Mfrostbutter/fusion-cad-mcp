@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed: `corpus build` was missing from the release entirely
+
+Reported in [#1](https://github.com/Mfrostbutter/fusion-cad-mcp/issues/1). A
+`.gitignore` rule meant to keep the built Autodesk corpus out of the repo,
+`corpus/`, matched any directory of that name at any depth. It swallowed
+`src/fusion_cad_mcp/corpus/`, the builder package itself, so 0.2.0 shipped a
+CLI entry point, a README section, and an optional dependency group for code
+that was never published. `fusion-cad-mcp corpus build` died on
+`ModuleNotFoundError`, and `find_api` had no way to get a corpus.
+
+The ignore rules are now anchored to build output only, and the package is
+committed. Three bugs it was hiding are fixed with it:
+
+- `build()` passed `corpus_path=` to a `backfill_metadata.main()` that took no
+  arguments, so a completed scrape crashed on the metadata pass.
+- `backfill_metadata` read and wrote `corpus.jsonl` beside its own module, not
+  the directory the scraper was told to use. Under a normal install that is
+  inside site-packages. Both paths now come from the scraper's configured
+  output directory.
+- The scraper parsed with `lxml`, which was not in the `[corpus]` extra. bs4
+  only resolves the parser at first parse, so this surfaced mid-crawl rather
+  than at import. `lxml` is now declared, and a missing one falls back to
+  `html.parser` instead of failing.
+
+Verified end to end: build, metadata backfill, and a `find_api` query against
+the result.
+
 ## 0.2.0
 
 First release that works for someone other than its author.

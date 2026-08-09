@@ -8,6 +8,11 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
-# Local Fusion API corpus. Autodesk's content, built per-user, never committed.
-corpus/
+# Built Fusion API corpus. Autodesk's content, built per-user, never committed.
+# Only the build OUTPUT is ignored. src/fusion_cad_mcp/corpus/ is the builder
+# source package and must ship, so these patterns stay anchored or file-scoped.
+/corpus/
 corpus.jsonl
+corpus.jsonl.tmp
+scraper.log
+src/fusion_cad_mcp/corpus/pages/
