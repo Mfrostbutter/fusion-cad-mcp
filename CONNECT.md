@@ -2,6 +2,8 @@
 
 Three steps: turn on Fusion's API server, install this package, point your client at it.
 
+If you would rather have an AI do it with you, [AI-SETUP-PROMPT.md](AI-SETUP-PROMPT.md) is a paste-one-prompt version of this page.
+
 ## 1. Enable Fusion's MCP server
 
 In Fusion: **Preferences > General > API > Fusion MCP Server**, enable it.

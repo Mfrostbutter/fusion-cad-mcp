@@ -14,6 +14,8 @@ Fusion ships its own MCP server, but it exposes four broad tools that take raw P
 
 ## Install
 
+**Not a developer?** Start with [AI-SETUP-PROMPT.md](AI-SETUP-PROMPT.md). Paste one prompt into Claude and it walks you through the whole thing, install to first extrude, and verifies it worked.
+
 ```bash
 pip install "fusion-cad-mcp @ git+https://github.com/Mfrostbutter/fusion-cad-mcp.git"
 ```
