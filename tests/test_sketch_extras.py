@@ -1,5 +1,6 @@
 """Sketch additions (ellipse / arc / spline) tests."""
 import ast
+
 import pytest
 
 from fusion_cad_mcp.tools import sketch as sk

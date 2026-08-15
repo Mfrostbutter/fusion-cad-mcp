@@ -10,7 +10,6 @@ import pytest
 from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import features as f
 
-
 # ---------- extrude ----------
 
 def test_build_extrude_distance_emits_setDistanceExtent():

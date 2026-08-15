@@ -1,11 +1,10 @@
 """Assembly tool generator + run-wrapper tests."""
 import ast
-import json
+
 import pytest
 
 from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import assembly as asm
-
 
 # ---------- bodies_to_components ----------
 
@@ -15,8 +14,8 @@ def test_bodies_to_components_parses_and_iterates_mapping():
     # Features.createComponentFromBodyFeatures does not exist in the live API;
     # the correct call is BRepBody.createComponent(). (Filter comment lines:
     # the generated code documents the dead API in a comment.)
-    code_lines = [l for l in src.splitlines() if not l.strip().startswith("#")]
-    assert all("createComponentFromBodyFeatures" not in l for l in code_lines)
+    code_lines = [line for line in src.splitlines() if not line.strip().startswith("#")]
+    assert all("createComponentFromBodyFeatures" not in line for line in code_lines)
     assert "b.createComponent()" in src
     # createComponent() renames the moved body to the component default; the
     # original name must be restored so name-based addressing keeps working.

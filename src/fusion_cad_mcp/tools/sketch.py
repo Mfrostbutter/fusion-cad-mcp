@@ -54,25 +54,34 @@ def _resolve_ref(ref: str, sk_var: str = "sk") -> str:
             raise ValueError(f"{ref!r}: {kind} ref needs an index")
         try:
             idx = int(parts[1])
-        except ValueError:
-            raise ValueError(f"{ref!r}: index must be an int")
+        except ValueError as exc:
+            raise ValueError(f"{ref!r}: index must be an int") from exc
         sub = parts[2] if len(parts) >= 3 else None
 
         if kind == "line":
             base = f"{sk_var}.sketchCurves.sketchLines.item({idx})"
-            if sub is None:    return base
-            if sub == "start": return f"{base}.startSketchPoint"
-            if sub == "end":   return f"{base}.endSketchPoint"
+            if sub is None:
+                return base
+            if sub == "start":
+                return f"{base}.startSketchPoint"
+            if sub == "end":
+                return f"{base}.endSketchPoint"
         elif kind == "circle":
             base = f"{sk_var}.sketchCurves.sketchCircles.item({idx})"
-            if sub is None:     return base
-            if sub == "center": return f"{base}.centerSketchPoint"
+            if sub is None:
+                return base
+            if sub == "center":
+                return f"{base}.centerSketchPoint"
         elif kind == "arc":
             base = f"{sk_var}.sketchCurves.sketchArcs.item({idx})"
-            if sub is None:     return base
-            if sub == "start":  return f"{base}.startSketchPoint"
-            if sub == "end":    return f"{base}.endSketchPoint"
-            if sub == "center": return f"{base}.centerSketchPoint"
+            if sub is None:
+                return base
+            if sub == "start":
+                return f"{base}.startSketchPoint"
+            if sub == "end":
+                return f"{base}.endSketchPoint"
+            if sub == "center":
+                return f"{base}.centerSketchPoint"
         elif kind == "point":
             if sub is not None:
                 raise ValueError(f"{ref!r}: point refs cannot have a sub-entity")

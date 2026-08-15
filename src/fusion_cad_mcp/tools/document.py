@@ -8,7 +8,7 @@ per V2 spec Section 4 Group 1.
 from __future__ import annotations
 
 from ..adapter import FusionAdapter
-from ..envelope import Envelope, parse_stdout_json
+from ..envelope import Envelope
 
 # Valid confirm values for `close`. We reject auto-picking either; the agent must
 # surface the save-vs-discard choice to the user per the skill's gotcha catalog.

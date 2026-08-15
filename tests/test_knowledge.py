@@ -8,8 +8,6 @@ on machines without the scrape).
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from fusion_cad_mcp.tools import knowledge as kn

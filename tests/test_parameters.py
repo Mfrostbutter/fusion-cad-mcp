@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import ast
 import json
-from typing import Any
 
 from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import parameters as p
-
 
 # ---------- generator snapshots (Tier 1a) ----------
 

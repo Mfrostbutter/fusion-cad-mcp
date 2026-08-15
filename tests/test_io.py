@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import ast
-import json
 
 import pytest
 
 from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import io as io_tool
-
 
 # ---------- path validator ----------
 
