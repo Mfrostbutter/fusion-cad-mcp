@@ -3,7 +3,7 @@
 Crawls help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/*.htm starting from
 a seed list (Index.htm + What's New + known UM pages), follows every internal
 .htm link, converts each page to markdown, writes one .md per page plus a JSONL
-corpus and a manifest.
+corpus, a manifest, and the crawl frontier that --resume picks back up.
 
 Usage:
     py -3 scraper.py --i-accept-autodesk-terms
@@ -53,7 +53,12 @@ OUT_DIR = DEFAULT_OUT_DIR
 PAGES_DIR = OUT_DIR / "pages"
 CORPUS_PATH = OUT_DIR / "corpus.jsonl"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
+FRONTIER_PATH = OUT_DIR / "frontier.json"
 LOG_PATH = OUT_DIR / "scraper.log"
+
+# Save the frontier every N pages so a crash or kill loses at most this much
+# crawl progress.
+FRONTIER_SAVE_EVERY = 250
 
 
 def configure(out_dir: Path) -> None:
@@ -62,11 +67,12 @@ def configure(out_dir: Path) -> None:
     The paths are module-level constants used throughout, so rebind them all
     together rather than threading a directory through every function.
     """
-    global OUT_DIR, PAGES_DIR, CORPUS_PATH, MANIFEST_PATH, LOG_PATH
+    global OUT_DIR, PAGES_DIR, CORPUS_PATH, MANIFEST_PATH, FRONTIER_PATH, LOG_PATH
     OUT_DIR = Path(out_dir).expanduser().resolve()
     PAGES_DIR = OUT_DIR / "pages"
     CORPUS_PATH = OUT_DIR / "corpus.jsonl"
     MANIFEST_PATH = OUT_DIR / "manifest.json"
+    FRONTIER_PATH = OUT_DIR / "frontier.json"
     LOG_PATH = OUT_DIR / "scraper.log"
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_USER_AGENT = "fusion-cad-mcp-corpus-builder/0.1 (local cache; contact configurable)"
@@ -216,74 +222,180 @@ def already_scraped() -> set[str]:
     return {p.stem + ".htm" for p in PAGES_DIR.glob("*.md")}
 
 
-def run(limit: int | None, rate: float, resume: bool) -> None:
+def save_frontier(queue: deque[str] | list[str], seen: set[str]) -> None:
+    """Persist the pending queue and visited set so --resume can continue.
+
+    Written atomically: a truncated frontier would silently shrink the crawl.
+    """
+    payload = {"pending": list(queue), "seen": sorted(seen)}
+    tmp = FRONTIER_PATH.with_name(FRONTIER_PATH.name + ".tmp")
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    tmp.replace(FRONTIER_PATH)
+
+
+def load_frontier() -> tuple[list[str], set[str]] | None:
+    """Read a saved frontier. None when absent or unreadable."""
+    if not FRONTIER_PATH.exists():
+        return None
+    try:
+        data = json.loads(FRONTIER_PATH.read_text(encoding="utf-8"))
+        return list(data.get("pending", [])), set(data.get("seen", []))
+    except (OSError, ValueError) as e:
+        log(f"WARN unreadable frontier {FRONTIER_PATH.name}: {e}")
+        return None
+
+
+# Link targets in converted pages: [text](Foo.htm), [text](Foo.htm "title"),
+# and <Foo.htm> autolinks.
+MD_LINK_RE = re.compile(
+    r"""\(\s*([^()\s]+\.htm)(?:\#[^()\s]*)?(?:\s+"[^"]*")?\s*\)"""
+    r"""|<\s*([^<>\s]+\.htm)(?:\#[^<>\s]*)?\s*>""",
+    re.IGNORECASE,
+)
+
+
+def extract_links_from_markdown(text: str) -> list[str]:
+    """Pull internal .htm links out of an already-converted page."""
+    out = []
+    for m in MD_LINK_RE.finditer(text):
+        href = m.group(1) or m.group(2)
+        absurl = urljoin(BASE, href).split("#", 1)[0]
+        if absurl.startswith(BASE):
+            out.append(absurl)
+    return out
+
+
+def rebuild_frontier_from_pages() -> list[str]:
+    """Re-derive the crawl frontier from the pages already on disk.
+
+    Raw HTML is not kept, so the converted markdown is the only surviving record
+    of each page's outbound links. Used when resuming a corpus built before the
+    frontier was persisted.
+    """
+    links: list[str] = []
+    known: set[str] = set()
+    if not PAGES_DIR.exists():
+        return links
+    for path in sorted(PAGES_DIR.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as e:
+            log(f"  WARN unreadable page {path.name}: {e}")
+            continue
+        for link in extract_links_from_markdown(text):
+            if link not in known:
+                known.add(link)
+                links.append(link)
+    return links
+
+
+def run(limit: int | None, rate: float, resume: bool) -> dict:
+    """Crawl until the queue drains. Returns the manifest."""
     PAGES_DIR.mkdir(parents=True, exist_ok=True)
 
     # Reset corpus on fresh run
-    if not resume and CORPUS_PATH.exists():
-        CORPUS_PATH.unlink()
+    if not resume:
+        if CORPUS_PATH.exists():
+            CORPUS_PATH.unlink()
+        FRONTIER_PATH.unlink(missing_ok=True)
 
     seen: set[str] = set()
     queue: deque[str] = deque()
-    for s in SEEDS:
-        queue.append(BASE + s)
+    already: set[str] = set()
+    frontier_source = "seeds"
+    restored = 0
 
     if resume:
         already = already_scraped()
         log(f"Resume: {len(already)} pages already scraped, skipping")
-    else:
-        already = set()
+        saved = load_frontier()
+        if saved is not None:
+            pending, seen = saved
+            queue.extend(pending)
+            frontier_source = "saved"
+            restored = len(queue)
+            log(f"Resume: restored frontier, {restored} URLs pending")
+        elif already:
+            # Corpus predates frontier persistence. Raw HTML is not kept, so
+            # re-derive the links from the converted pages rather than re-fetch.
+            queue.extend(rebuild_frontier_from_pages())
+            frontier_source = "pages"
+            restored = len(queue)
+            log(f"Resume: no saved frontier, rebuilt {restored} URLs from pages on disk")
+
+    for s in SEEDS:
+        url = BASE + s
+        if url not in seen:
+            queue.append(url)
 
     scraped = 0
     failed = 0
-    while queue:
-        if limit and scraped >= limit:
-            log(f"Limit {limit} reached, stopping")
-            break
-        url = queue.popleft()
-        if url in seen:
-            continue
-        seen.add(url)
-        slug = url.rsplit("/", 1)[-1]
-        if slug in already:
-            # On disk from a prior run. Raw HTML is not kept, so its outbound
-            # links cannot be re-discovered: resume is best-effort, and a full
-            # crawl is the way to guarantee complete coverage.
-            continue
+    # Popped but not yet accounted for. Requeued if the crawl dies mid-page,
+    # otherwise the URL sits in `seen` with nothing on disk and resume skips it.
+    inflight: str | None = None
+    try:
+        while queue:
+            if limit and scraped >= limit:
+                log(f"Limit {limit} reached, stopping")
+                break
+            url = queue.popleft()
+            if url in seen:
+                continue
+            slug = url.rsplit("/", 1)[-1]
+            if slug in already:
+                seen.add(url)
+                continue
 
-        log(f"[{scraped + 1}] GET {slug}")
-        html = fetch(url)
-        if html is None:
-            log(f"  SKIP {slug}: 404 or permanent failure")
-            failed += 1
+            inflight = url
+            seen.add(url)
+            log(f"[{scraped + 1}] GET {slug}")
+            html = fetch(url)
+            if html is None:
+                log(f"  SKIP {slug}: 404 or permanent failure")
+                failed += 1
+                inflight = None
+                time.sleep(rate)
+                continue
+
+            try:
+                record = page_to_record(url, html)
+                write_page(record)
+                append_corpus(record)
+                scraped += 1
+            except Exception as e:
+                log(f"  ERROR parsing {slug}: {e}")
+                failed += 1
+
+            # Enqueue newly discovered links
+            for link in extract_links(html):
+                if link not in seen:
+                    queue.append(link)
+            inflight = None
+
+            if scraped and scraped % FRONTIER_SAVE_EVERY == 0:
+                save_frontier(queue, seen)
+
             time.sleep(rate)
-            continue
-
-        try:
-            record = page_to_record(url, html)
-            write_page(record)
-            append_corpus(record)
-            scraped += 1
-        except Exception as e:
-            log(f"  ERROR parsing {slug}: {e}")
-            failed += 1
-
-        # Enqueue newly discovered links
-        for link in extract_links(html):
-            if link not in seen:
-                queue.append(link)
-
-        time.sleep(rate)
+    finally:
+        # Also runs on Ctrl-C, so an interrupted crawl stays resumable.
+        if inflight is not None:
+            queue.appendleft(inflight)
+            seen.discard(inflight)
+        save_frontier(queue, seen)
 
     manifest = {
         "scraped": scraped,
         "failed": failed,
         "seen": len(seen),
         "queue_remaining": len(queue),
+        "pages_on_disk": len(already),
+        "frontier_source": frontier_source,
+        "frontier_restored": restored,
         "completed": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     log(f"DONE scraped={scraped} failed={failed} seen={len(seen)} queue_remaining={len(queue)}")
+    return manifest
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -295,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="fusion-cad-mcp corpus build")
     ap.add_argument("--limit", type=int, default=None, help="Stop after N pages (smoke test)")
     ap.add_argument("--rate", type=float, default=1.0, help="Seconds between requests")
-    ap.add_argument("--resume", action="store_true", help="Skip pages already on disk")
+    ap.add_argument("--resume", action="store_true", help="Continue a prior crawl: skip pages already on disk and restore the pending queue")
     ap.add_argument("--contact", default="", help="Optional contact string for the User-Agent")
     ap.add_argument("--user-agent", default="", help="Override the default User-Agent")
     ap.add_argument("--i-accept-autodesk-terms", action="store_true", help="Confirm this user-initiated local cache build complies with Autodesk terms")
@@ -330,10 +442,29 @@ def main(argv: list[str] | None = None) -> int:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        run(args.limit, args.rate, args.resume)
+        manifest = run(args.limit, args.rate, args.resume)
     except KeyboardInterrupt:
         log("Interrupted by user")
         return 130
+
+    # Safety net: a resume that scrapes nothing and recovered no frontier has
+    # not finished the crawl, it has lost it. Fail loudly rather than let the
+    # caller print "Corpus ready" over a near-empty corpus.
+    if (
+        args.resume
+        and manifest["scraped"] == 0
+        and manifest["pages_on_disk"]
+        and manifest["frontier_source"] != "saved"
+        and manifest["frontier_restored"] == 0
+    ):
+        print(
+            "WARNING: resume found no pending work and scraped nothing; the crawl "
+            "frontier could not be restored.\nThe corpus contains only the "
+            f"{manifest['pages_on_disk']} pages already on disk and is very likely "
+            "incomplete.\nRe-run without --resume to rebuild it.",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

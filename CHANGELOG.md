@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed: a clean install pulled `mcp` 2.x and could not start
+
+Reported in [#2](https://github.com/Mfrostbutter/fusion-cad-mcp/issues/2). The
+dependency was declared as `mcp>=1.2.0` with no ceiling. `mcp` 2.0.0 removed
+`mcp.server.fastmcp`, which `server.py` imports, so pip resolved to a release
+the server cannot run on: the install reported success and every invocation of
+the entry point died with `ModuleNotFoundError`. To an MCP client that looks
+like a server that will not start, with nothing pointing at the cause.
+
+The requirement is now `mcp>=1.2.0,<2`. Supporting 2.x is a port from
+`fastmcp` to `mcpserver` and is not in this release.
+
+### Fixed: `corpus build --resume` scraped nothing and reported success
+
+Reported in [#3](https://github.com/Mfrostbutter/fusion-cad-mcp/issues/3). The
+crawl frontier only ever existed in memory, discovered by parsing links out of
+pages as they were fetched. `--resume` skipped pages already on disk, so their
+links were never extracted, the queue was never repopulated, and an empty queue
+read as a finished crawl. A `--limit` smoke test followed by `--resume`, which
+is what the `--limit` help text invites, produced a corpus of five pages that
+announced `Corpus ready` and exited 0. `find_api` then returned almost nothing,
+with no signal pointing back at the build.
+
+Three changes, in the order they take effect:
+
+- **The frontier is persisted.** `frontier.json` holds the pending queue and
+  the visited set, written every 250 pages and again on the way out, including
+  on Ctrl-C. `--resume` restores it and continues. An interrupted page is
+  requeued rather than left marked visited with nothing on disk.
+- **A missing frontier is rebuilt from the pages already scraped.** Raw HTML is
+  not kept, so the links are re-derived from the converted markdown. This is
+  what lets a corpus built by an earlier version resume without re-fetching
+  what it already has.
+- **A suspicious finish is no longer a success.** A resume that scrapes zero
+  pages and recovers no frontier now warns and exits non-zero instead of
+  printing `Corpus ready` over a near-empty corpus.
+
+Verified against the live site: a `--limit 5` build followed by `--resume`
+restores all 18,223 pending URLs and continues the crawl, and a resume with
+`frontier.json` removed rebuilds 18,063 URLs from the pages on disk.
+
 ## 0.2.1
 
 ### Fixed: `corpus build` was missing from the release entirely

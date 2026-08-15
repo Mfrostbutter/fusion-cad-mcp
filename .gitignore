@@ -14,5 +14,7 @@ venv/
 /corpus/
 corpus.jsonl
 corpus.jsonl.tmp
+frontier.json
+frontier.json.tmp
 scraper.log
 src/fusion_cad_mcp/corpus/pages/
