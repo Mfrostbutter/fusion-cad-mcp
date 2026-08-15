@@ -13,11 +13,11 @@ import sys
 from mcp.server.fastmcp import FastMCP
 
 from .adapter import DEFAULT_URL, FusionAdapter
+from .tools import assembly as asm
+from .tools import construction as cons
 from .tools import doc_state as doc_state_tool
 from .tools import document as docs
 from .tools import execute as execute_tool
-from .tools import assembly as asm
-from .tools import construction as cons
 from .tools import features as feat
 from .tools import handle_tools as ht
 from .tools import io as io_tools

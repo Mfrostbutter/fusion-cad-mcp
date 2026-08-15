@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import textwrap
-from typing import Any
 
 from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json

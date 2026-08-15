@@ -16,7 +16,6 @@ Addressing model (until V2 Section 5a handles land):
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json
@@ -556,8 +555,10 @@ def build_pattern_rectangular(
     y_distance: str | None = None,
     name: str | None = None,
 ) -> str:
-    if x_count < 1: raise ValueError("x_count must be >= 1")
-    if y_count < 1: raise ValueError("y_count must be >= 1")
+    if x_count < 1:
+        raise ValueError("x_count must be >= 1")
+    if y_count < 1:
+        raise ValueError("y_count must be >= 1")
     if x_count > 1 and not x_distance:
         raise ValueError("x_distance required when x_count > 1")
     if y_axis and y_count > 1 and not y_distance:
@@ -684,8 +685,10 @@ def build_pattern_circular(
     total_angle: str = "360 deg",
     name: str | None = None,
 ) -> str:
-    if count < 2: raise ValueError("count must be >= 2")
-    if not total_angle: raise ValueError("total_angle required")
+    if count < 2:
+        raise ValueError("count must be >= 2")
+    if not total_angle:
+        raise ValueError("total_angle required")
 
     axis_expr = _resolve_axis_expr(axis)
     name_block = f"    feat.name = {json.dumps(name)}\n" if name else ""

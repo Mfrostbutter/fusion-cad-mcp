@@ -6,8 +6,6 @@ set_view via fusion_mcp_execute (no direct read tool; uses the active viewport).
 
 from __future__ import annotations
 
-import json
-
 from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json
 

@@ -15,7 +15,6 @@ current name-based addressing can't express.
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json
@@ -151,7 +150,6 @@ def build_move_component(
         rx, ry, rz = rotation_axis
         origin = rotation_origin_mm or [0, 0, 0]
         ox, oy, oz = (v / 10.0 for v in origin)
-        import math
         angle_rad = (rotation_angle_deg or 0) * 3.141592653589793 / 180.0
         rotation_block = f"""
     rot = adsk.core.Matrix3D.create()
@@ -717,8 +715,9 @@ def build_create_joint(
     if axis not in VALID_AXES:
         raise ValueError(f"axis must be one of {sorted(VALID_AXES)}, got {axis!r}")
 
-    from ..handles import emit_resolve, parse_handle  # local import keeps module load light
     import textwrap
+
+    from ..handles import emit_resolve, parse_handle  # local import keeps module load light
 
     h1 = parse_handle(geometry_one)
     h2 = parse_handle(geometry_two)

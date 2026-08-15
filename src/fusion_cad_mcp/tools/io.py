@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any
 
 from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json
@@ -157,12 +156,12 @@ def _build_export_stl(body: str | None, path: str, refinement: str, units: str) 
            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
            if body else "")
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
-        + f"    em = design.exportManager\n"
+        + "    em = design.exportManager\n"
         + f"    opts = em.createSTLExportOptions({target_expr}, {json.dumps(path)})\n"
         + f"    opts.meshRefinement = adsk.fusion.MeshRefinementSettings.{refinement_enum}\n"
-        + f"    opts.sendToPrintUtility = False\n"
+        + "    opts.sendToPrintUtility = False\n"
         + f"    opts.units = adsk.fusion.DistanceUnits.{units_enum}\n"
-        + f"    em.execute(opts)\n"
+        + "    em.execute(opts)\n"
         + f"    size = os.path.getsize({json.dumps(path)}) if os.path.exists({json.dumps(path)}) else 0\n"
         + f"    print(json.dumps({{'ok': True, 'format': 'stl', 'path': {json.dumps(path)},"
         + f" 'bytes_written': size, 'refinement': {json.dumps(refinement)}, 'units': {json.dumps(units)}}}))\n"
@@ -190,9 +189,9 @@ def _build_export_3mf(body: str | None, path: str) -> str:
            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
            if body else "")
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
-        + f"    em = design.exportManager\n"
+        + "    em = design.exportManager\n"
         + f"    opts = em.createC3MFExportOptions({target_expr}, {json.dumps(path)})\n"
-        + f"    em.execute(opts)\n"
+        + "    em.execute(opts)\n"
         + f"    size = os.path.getsize({json.dumps(path)}) if os.path.exists({json.dumps(path)}) else 0\n"
         + f"    print(json.dumps({{'ok': True, 'format': '3mf', 'path': {json.dumps(path)}, 'bytes_written': size}}))\n"
     )
@@ -221,10 +220,10 @@ def _build_export_obj(body: str | None, path: str, refinement: str) -> str:
            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
            if body else "")
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
-        + f"    em = design.exportManager\n"
+        + "    em = design.exportManager\n"
         + f"    opts = em.createOBJExportOptions({target_expr}, {json.dumps(path)})\n"
         + f"    opts.meshRefinement = adsk.fusion.MeshRefinementSettings.{refinement_enum}\n"
-        + f"    em.execute(opts)\n"
+        + "    em.execute(opts)\n"
         + f"    size = os.path.getsize({json.dumps(path)}) if os.path.exists({json.dumps(path)}) else 0\n"
         + f"    print(json.dumps({{'ok': True, 'format': 'obj', 'path': {json.dumps(path)}, 'bytes_written': size}}))\n"
     )
@@ -240,9 +239,9 @@ def _build_export_simple(opts_factory: str, path: str) -> str:
         + "    if design is None:\n"
         + "        print(json.dumps({'ok': False, 'error': 'no_active_design'})); return\n"
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
-        + f"    em = design.exportManager\n"
+        + "    em = design.exportManager\n"
         + f"    opts = em.{opts_factory}({json.dumps(path)})\n"
-        + f"    em.execute(opts)\n"
+        + "    em.execute(opts)\n"
         + f"    size = os.path.getsize({json.dumps(path)}) if os.path.exists({json.dumps(path)}) else 0\n"
         + f"    print(json.dumps({{'ok': True, 'path': {json.dumps(path)}, 'bytes_written': size}}))\n"
     )
@@ -290,16 +289,16 @@ def build_import_geometry(format: str, path: str) -> str:
         + "        print(json.dumps({'ok': False, 'error': 'no_active_design'})); return\n"
         + f"    if not os.path.exists({json.dumps(path)}):\n"
         + f"        print(json.dumps({{'ok': False, 'error': 'file_not_found', 'path': {json.dumps(path)}}})); return\n"
-        + f"    im = app.importManager\n"
+        + "    im = app.importManager\n"
         + f"    opts = im.{factory}({json.dumps(path)})\n"
-        + f"    pre_bodies = design.rootComponent.bRepBodies.count\n"
-        + f"    pre_occs = design.rootComponent.occurrences.count\n"
-        + f"    im.importToTarget(opts, design.rootComponent)\n"
-        + f"    print(json.dumps({{\n"
+        + "    pre_bodies = design.rootComponent.bRepBodies.count\n"
+        + "    pre_occs = design.rootComponent.occurrences.count\n"
+        + "    im.importToTarget(opts, design.rootComponent)\n"
+        + "    print(json.dumps({\n"
         + f"        'ok': True, 'format': {json.dumps(fmt)}, 'path': {json.dumps(path)},\n"
-        + f"        'bodies_added': design.rootComponent.bRepBodies.count - pre_bodies,\n"
-        + f"        'occurrences_added': design.rootComponent.occurrences.count - pre_occs,\n"
-        + f"    }}))\n"
+        + "        'bodies_added': design.rootComponent.bRepBodies.count - pre_bodies,\n"
+        + "        'occurrences_added': design.rootComponent.occurrences.count - pre_occs,\n"
+        + "    }))\n"
     )
 
 

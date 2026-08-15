@@ -1,7 +1,10 @@
 """Joint by-name tools: set_joint_limits + drive_joint."""
 import ast
+import json
+
 import pytest
 
+from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import assembly as asm
 
 
@@ -50,17 +53,14 @@ def test_drive_joint_tries_multiple_motion_attrs():
     # Evaluated per attribute with matching measure (deg / mm), never realValue
     # (filter comment lines: the generated code documents the dead API).
     assert "evaluateExpression" in src
-    code_lines = [l for l in src.splitlines() if not l.strip().startswith("#")]
-    assert all(".realValue" not in l for l in code_lines)
+    code_lines = [line for line in src.splitlines() if not line.strip().startswith("#")]
+    assert all(".realValue" not in line for line in code_lines)
     assert '"30 deg"' in src
     # Fusion silently clamps beyond-limit drives; response must expose it.
     assert '"applied"' in src
 
 
 # ---------- create_joint ----------
-
-import json
-from fusion_cad_mcp.envelope import Envelope
 
 
 def _h(kind, path="b", token="tok"):

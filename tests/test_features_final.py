@@ -1,5 +1,6 @@
 """Final feature additions: move_body, rib, add_hole kinds."""
 import ast
+
 import pytest
 
 from fusion_cad_mcp.tools import features as f
