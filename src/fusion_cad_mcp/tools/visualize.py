@@ -10,8 +10,17 @@ from ..adapter import FusionAdapter
 from ..envelope import Envelope, parse_stdout_json
 
 VALID_DIRECTIONS = {
-    "current", "front", "back", "bottom", "top", "left", "right",
-    "iso-bottom-left", "iso-bottom-right", "iso-top-left", "iso-top-right",
+    "current",
+    "front",
+    "back",
+    "bottom",
+    "top",
+    "left",
+    "right",
+    "iso-bottom-left",
+    "iso-bottom-right",
+    "iso-top-left",
+    "iso-top-right",
 }
 
 
@@ -51,16 +60,16 @@ def build_set_view(direction: str, fit: bool = True) -> str:
     Uses ViewOrientations enum from adsk.core. 'current' is a no-op.
     """
     enum_map = {
-        "top":              "TopViewOrientation",
-        "bottom":           "BottomViewOrientation",
-        "left":             "LeftViewOrientation",
-        "right":            "RightViewOrientation",
-        "front":            "FrontViewOrientation",
-        "back":             "BackViewOrientation",
-        "iso-top-right":    "IsoTopRightViewOrientation",
-        "iso-top-left":     "IsoTopLeftViewOrientation",
+        "top": "TopViewOrientation",
+        "bottom": "BottomViewOrientation",
+        "left": "LeftViewOrientation",
+        "right": "RightViewOrientation",
+        "front": "FrontViewOrientation",
+        "back": "BackViewOrientation",
+        "iso-top-right": "IsoTopRightViewOrientation",
+        "iso-top-left": "IsoTopLeftViewOrientation",
         "iso-bottom-right": "IsoBottomRightViewOrientation",
-        "iso-bottom-left":  "IsoBottomLeftViewOrientation",
+        "iso-bottom-left": "IsoBottomLeftViewOrientation",
     }
     if direction == "current":
         # Just fit, no orient
@@ -74,9 +83,7 @@ def build_set_view(direction: str, fit: bool = True) -> str:
                 f" 'direction': {direction!r}}})); return"
             )
         else:
-            orient_block = (
-                f"vp.viewOrientation = adsk.core.ViewOrientations.{enum_name}"
-            )
+            orient_block = f"vp.viewOrientation = adsk.core.ViewOrientations.{enum_name}"
     fit_block = "vp.fit()" if fit else "# fit=False — leaving zoom alone"
     return f"""
 import adsk.core
@@ -100,7 +107,9 @@ def run(_ctx):
 """.strip()
 
 
-def set_view(adapter: FusionAdapter, direction: str = "iso-top-right", fit: bool = True) -> Envelope:
+def set_view(
+    adapter: FusionAdapter, direction: str = "iso-top-right", fit: bool = True
+) -> Envelope:
     if direction not in VALID_DIRECTIONS:
         return Envelope(
             ok=False,
@@ -196,7 +205,8 @@ def screenshot_compare_with_marker(
     cur_parsed = parse_stdout_json(cur_env)
     if cur_parsed is None or cur_parsed.get("ok") is False:
         return Envelope(
-            ok=False, error="marker_read_failed",
+            ok=False,
+            error="marker_read_failed",
             message=cur_env.message,
             result=cur_parsed,
         )
@@ -209,7 +219,8 @@ def screenshot_compare_with_marker(
     # Step 2: roll back to the "before" position
     if before_marker_position < 0 or before_marker_position > tl_count:
         return Envelope(
-            ok=False, error="invalid_marker_position",
+            ok=False,
+            error="invalid_marker_position",
             message=f"before_marker_position must be in [0, {tl_count}], got {before_marker_position}",
         )
     roll_back_env = adapter.execute_script(_set_marker_script(before_marker_position))
@@ -222,8 +233,10 @@ def screenshot_compare_with_marker(
     if not before_env.ok or before_env.image is None:
         _restore()
         return Envelope(
-            ok=False, error="before_screenshot_failed",
-            message=before_env.message, result=before_env.to_dict(),
+            ok=False,
+            error="before_screenshot_failed",
+            message=before_env.message,
+            result=before_env.to_dict(),
         )
 
     # Step 4: roll forward to the original position
@@ -231,7 +244,8 @@ def screenshot_compare_with_marker(
     if not roll_fwd_env.ok:
         # The marker may be stuck mid-rebuild; surface clearly
         return Envelope(
-            ok=False, error="restore_marker_failed",
+            ok=False,
+            error="restore_marker_failed",
             message=roll_fwd_env.message,
             result={"before_marker": before_marker_position, "after_marker_target": after_pos},
         )
@@ -240,8 +254,10 @@ def screenshot_compare_with_marker(
     after_env = screenshot(adapter, direction, width, height, transparent, anti_aliasing)
     if not after_env.ok or after_env.image is None:
         return Envelope(
-            ok=False, error="after_screenshot_failed",
-            message=after_env.message, result=after_env.to_dict(),
+            ok=False,
+            error="after_screenshot_failed",
+            message=after_env.message,
+            result=after_env.to_dict(),
         )
 
     return Envelope(

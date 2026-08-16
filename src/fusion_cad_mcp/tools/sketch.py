@@ -98,6 +98,7 @@ def _resolve_ref(ref: str, sk_var: str = "sk") -> str:
 
 # ---------- script header shared by all sketch tools ----------
 
+
 def _sketch_header(sketch_name: str) -> str:
     """Emit Python that locates the sketch by name in the root component."""
     return f"""\
@@ -181,13 +182,14 @@ def create_sketch(adapter: FusionAdapter, plane: str, name: str) -> Envelope:
 
 # ---------- add_line ----------
 
+
 def build_add_line(sketch_name: str, p1: list[float], p2: list[float]) -> str:
     header = _sketch_header(sketch_name)
     ensure = _ensure_sketch_in_script()
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     ln = sk.sketchCurves.sketchLines.addByTwoPoints(
-        P({p1[0]/10}, {p1[1]/10}, 0),
-        P({p2[0]/10}, {p2[1]/10}, 0))
+        P({p1[0] / 10}, {p1[1] / 10}, 0),
+        P({p2[0] / 10}, {p2[1] / 10}, 0))
     sk.isComputeDeferred = False
     print(json.dumps({{"ok": True, "line_index": sk.sketchCurves.sketchLines.count - 1}}))
 """
@@ -204,21 +206,25 @@ def add_line(adapter: FusionAdapter, sketch: str, p1: list[float], p2: list[floa
 VALID_RECT_KINDS = {"center", "corner", "3pt"}
 
 
-def build_add_rectangle(sketch_name: str, kind: str, p1: list[float], p2: list[float], p3: list[float] | None = None) -> str:
+def build_add_rectangle(
+    sketch_name: str, kind: str, p1: list[float], p2: list[float], p3: list[float] | None = None
+) -> str:
     if kind not in VALID_RECT_KINDS:
         raise ValueError(f"kind must be one of {sorted(VALID_RECT_KINDS)}, got {kind!r}")
     header = _sketch_header(sketch_name)
     ensure = _ensure_sketch_in_script()
 
     if kind == "center":
-        add = f"sk.sketchCurves.sketchLines.addCenterPointRectangle(P({p1[0]/10}, {p1[1]/10}, 0), P({p2[0]/10}, {p2[1]/10}, 0))"
+        add = f"sk.sketchCurves.sketchLines.addCenterPointRectangle(P({p1[0] / 10}, {p1[1] / 10}, 0), P({p2[0] / 10}, {p2[1] / 10}, 0))"
     elif kind == "corner":
-        add = f"sk.sketchCurves.sketchLines.addTwoPointRectangle(P({p1[0]/10}, {p1[1]/10}, 0), P({p2[0]/10}, {p2[1]/10}, 0))"
+        add = f"sk.sketchCurves.sketchLines.addTwoPointRectangle(P({p1[0] / 10}, {p1[1] / 10}, 0), P({p2[0] / 10}, {p2[1] / 10}, 0))"
     else:  # 3pt
         if p3 is None or len(p3) != 2:
             raise ValueError("kind=3pt requires p3 as [x, y] in mm")
-        add = (f"sk.sketchCurves.sketchLines.addThreePointRectangle("
-               f"P({p1[0]/10}, {p1[1]/10}, 0), P({p2[0]/10}, {p2[1]/10}, 0), P({p3[0]/10}, {p3[1]/10}, 0))")
+        add = (
+            f"sk.sketchCurves.sketchLines.addThreePointRectangle("
+            f"P({p1[0] / 10}, {p1[1] / 10}, 0), P({p2[0] / 10}, {p2[1] / 10}, 0), P({p3[0] / 10}, {p3[1] / 10}, 0))"
+        )
 
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     pre_count = sk.sketchCurves.sketchLines.count
@@ -245,7 +251,14 @@ def build_add_rectangle(sketch_name: str, kind: str, p1: list[float], p2: list[f
 """
 
 
-def add_rectangle(adapter: FusionAdapter, sketch: str, kind: str, p1: list[float], p2: list[float], p3: list[float] | None = None) -> Envelope:
+def add_rectangle(
+    adapter: FusionAdapter,
+    sketch: str,
+    kind: str,
+    p1: list[float],
+    p2: list[float],
+    p3: list[float] | None = None,
+) -> Envelope:
     if len(p1) != 2 or len(p2) != 2:
         return Envelope(ok=False, error="invalid_input", message="p1 and p2 must be [x, y] in mm")
     try:
@@ -270,13 +283,15 @@ def build_add_circle(sketch_name: str, kind: str, **kw: Any) -> str:
         radius_mm = kw.get("radius_mm")
         if center is None or len(center) != 2 or radius_mm is None:
             raise ValueError("kind=center_radius requires center=[x,y] and radius_mm")
-        add = f"sk.sketchCurves.sketchCircles.addByCenterRadius(P({center[0]/10}, {center[1]/10}, 0), {radius_mm/10})"
+        add = f"sk.sketchCurves.sketchCircles.addByCenterRadius(P({center[0] / 10}, {center[1] / 10}, 0), {radius_mm / 10})"
     else:  # 3pt
         p1, p2, p3 = kw.get("p1"), kw.get("p2"), kw.get("p3")
         if not (p1 and p2 and p3 and len(p1) == 2 and len(p2) == 2 and len(p3) == 2):
             raise ValueError("kind=3pt requires p1, p2, p3 each as [x, y] in mm")
-        add = (f"sk.sketchCurves.sketchCircles.addByThreePoints("
-               f"P({p1[0]/10}, {p1[1]/10}, 0), P({p2[0]/10}, {p2[1]/10}, 0), P({p3[0]/10}, {p3[1]/10}, 0))")
+        add = (
+            f"sk.sketchCurves.sketchCircles.addByThreePoints("
+            f"P({p1[0] / 10}, {p1[1] / 10}, 0), P({p2[0] / 10}, {p2[1] / 10}, 0), P({p3[0] / 10}, {p3[1] / 10}, 0))"
+        )
 
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     pre = sk.sketchCurves.sketchCircles.count
@@ -296,7 +311,10 @@ def add_circle(adapter: FusionAdapter, sketch: str, kind: str, **kw: Any) -> Env
 
 # ---------- add_ellipse ----------
 
-def build_add_ellipse(sketch_name: str, center: list[float], major_axis_end: list[float], minor_axis_end: list[float]) -> str:
+
+def build_add_ellipse(
+    sketch_name: str, center: list[float], major_axis_end: list[float], minor_axis_end: list[float]
+) -> str:
     if len(center) != 2 or len(major_axis_end) != 2 or len(minor_axis_end) != 2:
         raise ValueError("center / major_axis_end / minor_axis_end must each be [x, y] in mm")
     header = _sketch_header(sketch_name)
@@ -304,15 +322,21 @@ def build_add_ellipse(sketch_name: str, center: list[float], major_axis_end: lis
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     pre = sk.sketchCurves.sketchEllipses.count
     el = sk.sketchCurves.sketchEllipses.add(
-        P({center[0]/10}, {center[1]/10}, 0),
-        P({major_axis_end[0]/10}, {major_axis_end[1]/10}, 0),
-        P({minor_axis_end[0]/10}, {minor_axis_end[1]/10}, 0))
+        P({center[0] / 10}, {center[1] / 10}, 0),
+        P({major_axis_end[0] / 10}, {major_axis_end[1] / 10}, 0),
+        P({minor_axis_end[0] / 10}, {minor_axis_end[1] / 10}, 0))
     sk.isComputeDeferred = False
     print(json.dumps({{"ok": True, "ellipse_index": pre}}))
 """
 
 
-def add_ellipse(adapter: FusionAdapter, sketch: str, center: list[float], major_axis_end: list[float], minor_axis_end: list[float]) -> Envelope:
+def add_ellipse(
+    adapter: FusionAdapter,
+    sketch: str,
+    center: list[float],
+    major_axis_end: list[float],
+    minor_axis_end: list[float],
+) -> Envelope:
     try:
         script = build_add_ellipse(sketch, center, major_axis_end, minor_axis_end)
     except ValueError as e:
@@ -335,20 +359,34 @@ def build_add_arc(sketch_name: str, kind: str, **kw: Any) -> str:
         p1, p2, p3 = kw.get("p1"), kw.get("p2"), kw.get("p3")
         if not (p1 and p2 and p3 and len(p1) == 2 and len(p2) == 2 and len(p3) == 2):
             raise ValueError("kind=3pt requires p1, p2, p3 each as [x, y] in mm")
-        add = (f"sk.sketchCurves.sketchArcs.addByThreePoints("
-               f"P({p1[0]/10}, {p1[1]/10}, 0), P({p2[0]/10}, {p2[1]/10}, 0), P({p3[0]/10}, {p3[1]/10}, 0))")
+        add = (
+            f"sk.sketchCurves.sketchArcs.addByThreePoints("
+            f"P({p1[0] / 10}, {p1[1] / 10}, 0), P({p2[0] / 10}, {p2[1] / 10}, 0), P({p3[0] / 10}, {p3[1] / 10}, 0))"
+        )
     elif kind == "center_start_end":
         center, start, end = kw.get("center"), kw.get("start"), kw.get("end")
-        if not (center and start and end and len(center) == 2 and len(start) == 2 and len(end) == 2):
-            raise ValueError("kind=center_start_end requires center, start, end each as [x, y] in mm")
-        add = (f"sk.sketchCurves.sketchArcs.addByCenterStartEnd("
-               f"P({center[0]/10}, {center[1]/10}, 0), P({start[0]/10}, {start[1]/10}, 0), P({end[0]/10}, {end[1]/10}, 0))")
+        if not (
+            center and start and end and len(center) == 2 and len(start) == 2 and len(end) == 2
+        ):
+            raise ValueError(
+                "kind=center_start_end requires center, start, end each as [x, y] in mm"
+            )
+        add = (
+            f"sk.sketchCurves.sketchArcs.addByCenterStartEnd("
+            f"P({center[0] / 10}, {center[1] / 10}, 0), P({start[0] / 10}, {start[1] / 10}, 0), P({end[0] / 10}, {end[1] / 10}, 0))"
+        )
     else:  # center_start_sweep
         center, start, sweep_rad = kw.get("center"), kw.get("start"), kw.get("sweep_radians")
-        if not (center and start and sweep_rad is not None and len(center) == 2 and len(start) == 2):
-            raise ValueError("kind=center_start_sweep requires center, start, sweep_radians (float)")
-        add = (f"sk.sketchCurves.sketchArcs.addByCenterStartSweep("
-               f"P({center[0]/10}, {center[1]/10}, 0), P({start[0]/10}, {start[1]/10}, 0), {sweep_rad})")
+        if not (
+            center and start and sweep_rad is not None and len(center) == 2 and len(start) == 2
+        ):
+            raise ValueError(
+                "kind=center_start_sweep requires center, start, sweep_radians (float)"
+            )
+        add = (
+            f"sk.sketchCurves.sketchArcs.addByCenterStartSweep("
+            f"P({center[0] / 10}, {center[1] / 10}, 0), P({start[0] / 10}, {start[1] / 10}, 0), {sweep_rad})"
+        )
 
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     pre = sk.sketchCurves.sketchArcs.count
@@ -368,6 +406,7 @@ def add_arc(adapter: FusionAdapter, sketch: str, kind: str, **kw: Any) -> Envelo
 
 # ---------- add_spline ----------
 
+
 def build_add_spline(sketch_name: str, points: list[list[float]], closed: bool = False) -> str:
     if not points or len(points) < 2:
         raise ValueError("points must be a list of at least 2 [x, y] points in mm")
@@ -376,7 +415,7 @@ def build_add_spline(sketch_name: str, points: list[list[float]], closed: bool =
             raise ValueError(f"points[{i}] must be [x, y]")
     header = _sketch_header(sketch_name)
     ensure = _ensure_sketch_in_script()
-    points_block = ",\n        ".join(f"P({p[0]/10}, {p[1]/10}, 0)" for p in points)
+    points_block = ",\n        ".join(f"P({p[0] / 10}, {p[1] / 10}, 0)" for p in points)
     is_closed = "True" if closed else "False"
     return f"""{header}{ensure}    sk.isComputeDeferred = True
     pre = sk.sketchCurves.sketchFittedSplines.count
@@ -392,7 +431,9 @@ def build_add_spline(sketch_name: str, points: list[list[float]], closed: bool =
 """
 
 
-def add_spline(adapter: FusionAdapter, sketch: str, points: list[list[float]], closed: bool = False) -> Envelope:
+def add_spline(
+    adapter: FusionAdapter, sketch: str, points: list[list[float]], closed: bool = False
+) -> Envelope:
     try:
         script = build_add_spline(sketch, points, closed)
     except ValueError as e:
@@ -402,7 +443,10 @@ def add_spline(adapter: FusionAdapter, sketch: str, points: list[list[float]], c
 
 # ---------- add_polygon ----------
 
-def build_add_polygon(sketch_name: str, sides: int, center: list[float], vertex: list[float], inscribed: bool = True) -> str:
+
+def build_add_polygon(
+    sketch_name: str, sides: int, center: list[float], vertex: list[float], inscribed: bool = True
+) -> str:
     if sides < 3:
         raise ValueError("sides must be >= 3")
     if len(center) != 2 or len(vertex) != 2:
@@ -413,8 +457,8 @@ def build_add_polygon(sketch_name: str, sides: int, center: list[float], vertex:
     # Fusion's addScribedPolygon(centerPoint, edgeCount, angle, radius, isFlipped)
     # We'll compute radius + angle from center+vertex.
     return f"""{header}{ensure}    import math
-    cx, cy = {center[0]/10}, {center[1]/10}
-    vx, vy = {vertex[0]/10}, {vertex[1]/10}
+    cx, cy = {center[0] / 10}, {center[1] / 10}
+    vx, vy = {vertex[0] / 10}, {vertex[1] / 10}
     radius = math.hypot(vx - cx, vy - cy)
     angle = math.atan2(vy - cy, vx - cx)
     sk.isComputeDeferred = True
@@ -426,7 +470,14 @@ def build_add_polygon(sketch_name: str, sides: int, center: list[float], vertex:
 """
 
 
-def add_polygon(adapter: FusionAdapter, sketch: str, sides: int, center: list[float], vertex: list[float], inscribed: bool = True) -> Envelope:
+def add_polygon(
+    adapter: FusionAdapter,
+    sketch: str,
+    sides: int,
+    center: list[float],
+    vertex: list[float],
+    inscribed: bool = True,
+) -> Envelope:
     try:
         script = build_add_polygon(sketch, sides, center, vertex, inscribed)
     except ValueError as e:
@@ -438,17 +489,17 @@ def add_polygon(adapter: FusionAdapter, sketch: str, sides: int, center: list[fl
 
 # Maps tool-facing kind -> (gc-method-name, expected_entity_count, accepts_lines_or_points)
 GC_KINDS: dict[str, tuple[str, int, str]] = {
-    "horizontal":    ("addHorizontal",    1, "line_or_two_points"),
-    "vertical":      ("addVertical",      1, "line_or_two_points"),
-    "parallel":      ("addParallel",      2, "lines"),
+    "horizontal": ("addHorizontal", 1, "line_or_two_points"),
+    "vertical": ("addVertical", 1, "line_or_two_points"),
+    "parallel": ("addParallel", 2, "lines"),
     "perpendicular": ("addPerpendicular", 2, "lines"),
-    "coincident":    ("addCoincident",    2, "any"),
-    "tangent":       ("addTangent",       2, "any"),
-    "equal":         ("addEqual",         2, "any"),
-    "concentric":    ("addConcentric",    2, "circle_or_arc"),
-    "fix":           ("addFix",           1, "any"),
-    "midpoint":      ("addMidPoint",      2, "point_and_line"),
-    "symmetric":     ("addSymmetry",      3, "two_entities_about_line"),
+    "coincident": ("addCoincident", 2, "any"),
+    "tangent": ("addTangent", 2, "any"),
+    "equal": ("addEqual", 2, "any"),
+    "concentric": ("addConcentric", 2, "circle_or_arc"),
+    "fix": ("addFix", 1, "any"),
+    "midpoint": ("addMidPoint", 2, "point_and_line"),
+    "symmetric": ("addSymmetry", 3, "two_entities_about_line"),
 }
 
 
@@ -468,7 +519,9 @@ def build_add_geometric_constraint(sketch_name: str, kind: str, entities: list[s
 """
 
 
-def add_geometric_constraint(adapter: FusionAdapter, sketch: str, kind: str, entities: list[str]) -> Envelope:
+def add_geometric_constraint(
+    adapter: FusionAdapter, sketch: str, kind: str, entities: list[str]
+) -> Envelope:
     try:
         script = build_add_geometric_constraint(sketch, kind, entities)
     except ValueError as e:
@@ -483,7 +536,7 @@ VALID_DIM_KINDS = {"distance_h", "distance_v", "distance", "angle", "radial", "d
 _DIM_ORIENT = {
     "distance_h": "HorizontalDimensionOrientation",
     "distance_v": "VerticalDimensionOrientation",
-    "distance":   "AlignedDimensionOrientation",
+    "distance": "AlignedDimensionOrientation",
 }
 
 
@@ -561,6 +614,7 @@ def add_dimension(
 
 # ---------- assert_profiles ----------
 
+
 def build_assert_profiles(sketch_name: str, expected: int) -> str:
     header = _sketch_header(sketch_name)
     ensure = _ensure_sketch_in_script()
@@ -577,7 +631,9 @@ def build_assert_profiles(sketch_name: str, expected: int) -> str:
 
 def assert_profiles(adapter: FusionAdapter, sketch: str, expected: int) -> Envelope:
     if not isinstance(expected, int) or expected < 0:
-        return Envelope(ok=False, error="invalid_input", message="expected must be a non-negative int")
+        return Envelope(
+            ok=False, error="invalid_input", message="expected must be a non-negative int"
+        )
     # Bypass the generic _run helper so we can distinguish "assertion failed"
     # (parsed.ok = False but the script ran fine) from real script-level errors.
     env = adapter.execute_script(build_assert_profiles(sketch, expected))
@@ -588,13 +644,17 @@ def assert_profiles(adapter: FusionAdapter, sketch: str, expected: int) -> Envel
         return Envelope(ok=False, error="assert_profiles_parse_failed", message=env.message)
     if "error" in parsed:
         return Envelope(
-            ok=False, error=parsed.get("error", "assert_profiles_error"),
-            message=env.message, result=parsed,
+            ok=False,
+            error=parsed.get("error", "assert_profiles_error"),
+            message=env.message,
+            result=parsed,
         )
     if parsed.get("ok") is False:
         return Envelope(
-            ok=False, error="profile_count_mismatch",
-            message=env.message, result=parsed,
+            ok=False,
+            error="profile_count_mismatch",
+            message=env.message,
+            result=parsed,
         )
     return Envelope(ok=True, message=env.message, result=parsed)
 
@@ -788,6 +848,7 @@ def probe_sketch_dimensions(
 
 # ---------- edit_sketch_dimension ----------
 
+
 def build_edit_sketch_dimension(
     sketch_name: str,
     dim_name: str,
@@ -912,7 +973,9 @@ def edit_sketch_dimension(
     component_name: str | None = None,
 ) -> Envelope:
     if not isinstance(new_expression, str) or not new_expression.strip():
-        return Envelope(ok=False, error="invalid_input", message="new_expression must be a non-empty string")
+        return Envelope(
+            ok=False, error="invalid_input", message="new_expression must be a non-empty string"
+        )
     return _run(
         adapter,
         build_edit_sketch_dimension(sketch, dim_name, new_expression, component_name),
@@ -921,6 +984,7 @@ def edit_sketch_dimension(
 
 
 # ---------- shared runner ----------
+
 
 def _run(adapter: FusionAdapter, script: str, label: str) -> Envelope:
     env = adapter.execute_script(script)

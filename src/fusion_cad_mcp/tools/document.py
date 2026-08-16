@@ -17,6 +17,7 @@ VALID_CLOSE_CONFIRM = {"save", "discard", "prompt"}
 
 # ---------- read-side: document & project listings ----------
 
+
 def list_open_docs(adapter: FusionAdapter) -> Envelope:
     """Return the list of recently-open documents from Fusion."""
     return adapter.read_query("document", operation="recent")
@@ -44,6 +45,7 @@ def open_doc(adapter: FusionAdapter, name: str, project: str | None = None) -> E
 
 
 # ---------- write-side: document ops ----------
+
 
 def save(adapter: FusionAdapter) -> Envelope:
     """Save the active document. Untitled docs are refused by Fusion's MCP;
@@ -89,6 +91,7 @@ def close(adapter: FusionAdapter, confirm: str = "prompt") -> Envelope:
 
 
 # ---------- write-side: undo / redo ----------
+
 
 def undo(adapter: FusionAdapter, count: int = 1) -> Envelope:
     """Run undo `count` times. WARNING: undo treats the prior execute call as one

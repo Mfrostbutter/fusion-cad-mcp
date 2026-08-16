@@ -19,6 +19,7 @@ def _have_corpus() -> bool:
 
 # ---------- pure-unit (no corpus required) ----------
 
+
 def test_tokenize_strips_punct_and_lowercases():
     assert kn._tokenize("MeshBody.calculateCollisionsWithRay") == [
         "meshbody",
@@ -80,6 +81,7 @@ def test_snippet_falls_back_to_head_when_no_match():
 
 # ---------- corpus regression (skip if no corpus) ----------
 
+
 @pytest.mark.skipif(not _have_corpus(), reason="no local Fusion API corpus built")
 def test_find_api_returns_meshbody_ray_for_known_query():
     env = kn.find_api("MeshBody calculateCollisionsWithRay")
@@ -104,7 +106,10 @@ def test_find_api_namespace_filter():
     assert env.ok is True
     # at least one fusion-namespace result
     namespaces = [h.get("namespace") or "" for h in env.result["hits"]]
-    assert any("fusion" in ns.lower() or ns.lower().startswith("fusion") for ns in namespaces) or env.result["matched"] == 0
+    assert (
+        any("fusion" in ns.lower() or ns.lower().startswith("fusion") for ns in namespaces)
+        or env.result["matched"] == 0
+    )
 
 
 @pytest.mark.skipif(not _have_corpus(), reason="no local Fusion API corpus built")
@@ -125,6 +130,7 @@ def test_find_api_returns_corpus_not_built_when_missing(monkeypatch, tmp_path):
 
 
 # ---------- patterns / gotchas (regression if files present) ----------
+
 
 def _have_skill_doc(name: str) -> bool:
     return kn._resolve_skill_doc(name) is not None

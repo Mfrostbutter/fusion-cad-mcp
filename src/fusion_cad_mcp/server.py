@@ -42,6 +42,7 @@ def _get_adapter() -> FusionAdapter:
 
 # ---------- Group 1: Document & State ----------
 
+
 @mcp.tool()
 def doc_state() -> dict:
     """Summary of the active Fusion document: bodies/sketches/features count, units, dirty flag, components, parameters."""
@@ -108,6 +109,7 @@ def redo(count: int = 1) -> dict:
 
 # ---------- Group 2: Sketch (parameters subset) ----------
 
+
 @mcp.tool()
 def add_parameters(defs: list[dict]) -> dict:
     """Add user parameters idempotently. Existing names are skipped, not overwritten.
@@ -133,6 +135,7 @@ def list_parameters() -> dict:
 
 # ---------- Group 2: Sketch geometry ----------
 
+
 @mcp.tool()
 def create_sketch(plane: str, name: str) -> dict:
     """Create a new sketch on a principal plane. plane in {xy, xz, yz}. name must be unique."""
@@ -154,16 +157,29 @@ def add_rectangle(sketch: str, kind: str, p1: list, p2: list, p3: list | None = 
 
 
 @mcp.tool()
-def add_circle(sketch: str, kind: str, center: list | None = None, radius_mm: float | None = None,
-               p1: list | None = None, p2: list | None = None, p3: list | None = None) -> dict:
+def add_circle(
+    sketch: str,
+    kind: str,
+    center: list | None = None,
+    radius_mm: float | None = None,
+    p1: list | None = None,
+    p2: list | None = None,
+    p3: list | None = None,
+) -> dict:
     """Add a circle. kind=center_radius needs center+radius_mm. kind=3pt needs p1+p2+p3.
     Returns circle_index for later reference."""
-    kw = {k: v for k, v in {"center": center, "radius_mm": radius_mm, "p1": p1, "p2": p2, "p3": p3}.items() if v is not None}
+    kw = {
+        k: v
+        for k, v in {"center": center, "radius_mm": radius_mm, "p1": p1, "p2": p2, "p3": p3}.items()
+        if v is not None
+    }
     return sk.add_circle(_get_adapter(), sketch, kind, **kw).to_dict()
 
 
 @mcp.tool()
-def add_polygon(sketch: str, sides: int, center: list, vertex: list, inscribed: bool = True) -> dict:
+def add_polygon(
+    sketch: str, sides: int, center: list, vertex: list, inscribed: bool = True
+) -> dict:
     """Add a regular polygon. sides >= 3. Inscribed (default) means vertices lie on the radius."""
     return sk.add_polygon(_get_adapter(), sketch, sides, center, vertex, inscribed).to_dict()
 
@@ -177,7 +193,9 @@ def add_geometric_constraint(sketch: str, kind: str, entities: list) -> dict:
 
 
 @mcp.tool()
-def add_dimension(sketch: str, kind: str, entities: list, expression: str, text_pos: list | None = None) -> dict:
+def add_dimension(
+    sketch: str, kind: str, entities: list, expression: str, text_pos: list | None = None
+) -> dict:
     """Add a dimension with an expression. kind in {distance_h, distance_v, distance, angle, radial, diameter}.
     Parameter-name expressions ('body_width', 'length / 2') work AND propagate when the param changes
     (gotchas.md G9, verified 2026-05-31). Use literal mm only when you want a baked value.
@@ -268,11 +286,19 @@ def add_arc(
     center_start_end: center, start, end.
     center_start_sweep: center, start, sweep_radians (positive = CCW).
     """
-    kw = {k: v for k, v in {
-        "p1": p1, "p2": p2, "p3": p3,
-        "center": center, "start": start, "end": end,
-        "sweep_radians": sweep_radians,
-    }.items() if v is not None}
+    kw = {
+        k: v
+        for k, v in {
+            "p1": p1,
+            "p2": p2,
+            "p3": p3,
+            "center": center,
+            "start": start,
+            "end": end,
+            "sweep_radians": sweep_radians,
+        }.items()
+        if v is not None
+    }
     return sk.add_arc(_get_adapter(), sketch, kind, **kw).to_dict()
 
 
@@ -283,6 +309,7 @@ def add_spline(sketch: str, points: list, closed: bool = False) -> dict:
 
 
 # ---------- Group 3: Features ----------
+
 
 @mcp.tool()
 def extrude(
@@ -304,8 +331,16 @@ def extrude(
     Returns feature_name + bodies_added.
     """
     return feat.extrude(
-        _get_adapter(), sketch, profile_index, operation, extent_kind, expression,
-        direction, is_full_length, participants, name,
+        _get_adapter(),
+        sketch,
+        profile_index,
+        operation,
+        extent_kind,
+        expression,
+        direction,
+        is_full_length,
+        participants,
+        name,
     ).to_dict()
 
 
@@ -324,7 +359,13 @@ def fillet_edges_by_geometry(
     min_length_mm: optional minimum edge length filter (skips tiny rounding edges).
     """
     return feat.fillet_edges_by_geometry(
-        _get_adapter(), body, radius, parallel_to, min_length_mm, is_tangent_chain, name,
+        _get_adapter(),
+        body,
+        radius,
+        parallel_to,
+        min_length_mm,
+        is_tangent_chain,
+        name,
     ).to_dict()
 
 
@@ -343,7 +384,15 @@ def chamfer_edges_by_geometry(
     kind: equal (one distance) | two_dist (needs distance2) | dist_angle (needs angle).
     """
     return feat.chamfer_edges_by_geometry(
-        _get_adapter(), body, distance, parallel_to, kind, distance2, angle, min_length_mm, name,
+        _get_adapter(),
+        body,
+        distance,
+        parallel_to,
+        kind,
+        distance2,
+        angle,
+        min_length_mm,
+        name,
     ).to_dict()
 
 
@@ -368,8 +417,15 @@ def pattern_rectangular(
     x_distance / y_distance: total-extent expressions like '40 mm' or '4 * pitch'.
     """
     return feat.pattern_rectangular(
-        _get_adapter(), feature_or_body, x_axis, x_count, x_distance,
-        y_axis, y_count, y_distance, name,
+        _get_adapter(),
+        feature_or_body,
+        x_axis,
+        x_count,
+        x_distance,
+        y_axis,
+        y_count,
+        y_distance,
+        name,
     ).to_dict()
 
 
@@ -383,7 +439,12 @@ def pattern_circular(
 ) -> dict:
     """Circular pattern around an axis. axis: x | y | z | <construction_axis_name>."""
     return feat.pattern_circular(
-        _get_adapter(), feature_or_body, axis, count, total_angle, name,
+        _get_adapter(),
+        feature_or_body,
+        axis,
+        count,
+        total_angle,
+        name,
     ).to_dict()
 
 
@@ -397,7 +458,12 @@ def combine(
 ) -> dict:
     """Boolean combine. operation: join | cut | intersect. keep_tools: preserve tool bodies after op."""
     return feat.combine(
-        _get_adapter(), target_body, tool_bodies, operation, keep_tools, name,
+        _get_adapter(),
+        target_body,
+        tool_bodies,
+        operation,
+        keep_tools,
+        name,
     ).to_dict()
 
 
@@ -419,8 +485,16 @@ def revolve(
     operation: new_body | join | cut | intersect | new_component
     """
     return feat.revolve(
-        _get_adapter(), sketch, profile_index, axis, operation, extent_kind, angle,
-        is_symmetric, participants, name,
+        _get_adapter(),
+        sketch,
+        profile_index,
+        axis,
+        operation,
+        extent_kind,
+        angle,
+        is_symmetric,
+        participants,
+        name,
     ).to_dict()
 
 
@@ -437,7 +511,12 @@ def shell(
     direction: inside | outside | both.
     """
     return feat.shell(
-        _get_adapter(), body, thickness, face_normals_to_remove, direction, name,
+        _get_adapter(),
+        body,
+        thickness,
+        face_normals_to_remove,
+        direction,
+        name,
     ).to_dict()
 
 
@@ -461,8 +540,18 @@ def add_hole(
     extent_kind: all | distance (needs depth_expression).
     """
     return feat.add_hole(
-        _get_adapter(), body, position_mm, diameter, kind, cbore_diameter, cbore_depth,
-        csink_diameter, csink_angle, extent_kind, depth_expression, name,
+        _get_adapter(),
+        body,
+        position_mm,
+        diameter,
+        kind,
+        cbore_diameter,
+        cbore_depth,
+        csink_diameter,
+        csink_angle,
+        extent_kind,
+        depth_expression,
+        name,
     ).to_dict()
 
 
@@ -515,12 +604,24 @@ def move_body(
     Provide translation_mm (mm) and/or rotation (axis + angle_deg).
     """
     return feat.move_body(
-        _get_adapter(), body, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm, name,
+        _get_adapter(),
+        body,
+        translation_mm,
+        rotation_axis,
+        rotation_angle_deg,
+        rotation_origin_mm,
+        name,
     ).to_dict()
 
 
 @mcp.tool()
-def rib(sketch: str, thickness: str, side: str = "symmetric", extend_profile: bool = True, name: str | None = None) -> dict:
+def rib(
+    sketch: str,
+    thickness: str,
+    side: str = "symmetric",
+    extend_profile: bool = True,
+    name: str | None = None,
+) -> dict:
     """NOT SCRIPTABLE in the current Fusion API: RibFeatures is a read-only
     collection (no createInput/add), so this always returns the structured
     error `rib_not_scriptable`. Model ribs as thin join-extrudes instead.
@@ -529,6 +630,7 @@ def rib(sketch: str, thickness: str, side: str = "symmetric", extend_profile: bo
 
 
 # ---------- Group 5: Assembly & Motion (first slice, no joints) ----------
+
 
 @mcp.tool()
 def bodies_to_components(mapping: dict) -> dict:
@@ -554,7 +656,12 @@ def move_component(
     response; a joint solver can override the requested move.
     """
     return asm.move_component(
-        _get_adapter(), name, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm,
+        _get_adapter(),
+        name,
+        translation_mm,
+        rotation_axis,
+        rotation_angle_deg,
+        rotation_origin_mm,
     ).to_dict()
 
 
@@ -604,7 +711,9 @@ def set_joint_limits(
     (cylindrical joints get rotation limits). The response echoes back what
     Fusion actually stored under `applied` (internal units: radians / cm).
     """
-    return asm.set_joint_limits(_get_adapter(), joint_name, min_value, max_value, rest_value).to_dict()
+    return asm.set_joint_limits(
+        _get_adapter(), joint_name, min_value, max_value, rest_value
+    ).to_dict()
 
 
 @mcp.tool()
@@ -669,11 +778,18 @@ def create_joint(
     """
     return asm.create_joint(
         _get_adapter(),
-        geometry_one, geometry_two, motion_type, axis, offset_mm, angle_deg, name,
+        geometry_one,
+        geometry_two,
+        motion_type,
+        axis,
+        offset_mm,
+        angle_deg,
+        name,
     ).to_dict()
 
 
 # ---------- Group 4: Construction Geometry ----------
+
 
 @mcp.tool()
 def create_construction_plane(
@@ -696,12 +812,21 @@ def create_construction_plane(
     3_points: p1, p2, p3 each as [x, y, z] in mm
     Plane / axis names default to principals: 'xy', 'xz', 'yz' / 'x', 'y', 'z'.
     """
-    kw = {k: v for k, v in {
-        "base_plane": base_plane, "offset": offset,
-        "plane_a": plane_a, "plane_b": plane_b,
-        "axis": axis, "angle": angle,
-        "p1": p1, "p2": p2, "p3": p3,
-    }.items() if v is not None}
+    kw = {
+        k: v
+        for k, v in {
+            "base_plane": base_plane,
+            "offset": offset,
+            "plane_a": plane_a,
+            "plane_b": plane_b,
+            "axis": axis,
+            "angle": angle,
+            "p1": p1,
+            "p2": p2,
+            "p3": p3,
+        }.items()
+        if v is not None
+    }
     return cons.create_construction_plane(_get_adapter(), kind, name, **kw).to_dict()
 
 
@@ -718,9 +843,16 @@ def create_construction_axis(
     2_points: p1, p2 each as [x, y, z] in mm
     normal_to_face_by_geometry: body name + face_normal [nx, ny, nz] (finds the face whose normal matches)
     """
-    kw = {k: v for k, v in {
-        "p1": p1, "p2": p2, "body": body, "face_normal": face_normal,
-    }.items() if v is not None}
+    kw = {
+        k: v
+        for k, v in {
+            "p1": p1,
+            "p2": p2,
+            "body": body,
+            "face_normal": face_normal,
+        }.items()
+        if v is not None
+    }
     return cons.create_construction_axis(_get_adapter(), kind, name, **kw).to_dict()
 
 
@@ -737,6 +869,7 @@ def delete_construction(name: str) -> dict:
 
 
 # ---------- Group 5 / 6 / 2 / 3: Handle-consuming tools ----------
+
 
 @mcp.tool()
 def list_body_entities(
@@ -758,7 +891,12 @@ def list_body_entities(
     Use the returned handles in measure, fillet_edges, chamfer_edges, project_to_sketch, etc.
     """
     return ht.list_body_entities(
-        _get_adapter(), body, kinds, face_normal_filter, edge_parallel_to, min_edge_length_mm,
+        _get_adapter(),
+        body,
+        kinds,
+        face_normal_filter,
+        edge_parallel_to,
+        min_edge_length_mm,
     ).to_dict()
 
 
@@ -797,7 +935,9 @@ def ray_collision_with_mesh(
 
 
 @mcp.tool()
-def fillet_edges(edge_handles: list, radius: str, is_tangent_chain: bool = True, name: str | None = None) -> dict:
+def fillet_edges(
+    edge_handles: list, radius: str, is_tangent_chain: bool = True, name: str | None = None
+) -> dict:
     """Fillet specific edges by handle (UI-selection style).
     edge_handles: list from list_body_entities (kinds=['edge']).
     radius: expression like 'corner_r' or '8 mm'.
@@ -817,7 +957,9 @@ def chamfer_edges(
     """Chamfer specific edges by handle.
     kind: equal | two_dist (needs distance2) | dist_angle (needs angle).
     """
-    return ht.chamfer_edges(_get_adapter(), edge_handles, distance, kind, distance2, angle, name).to_dict()
+    return ht.chamfer_edges(
+        _get_adapter(), edge_handles, distance, kind, distance2, angle, name
+    ).to_dict()
 
 
 @mcp.tool()
@@ -827,6 +969,7 @@ def project_to_sketch(sketch: str, entity_handles: list) -> dict:
 
 
 # ---------- Group 6: Verify & Visualize ----------
+
 
 @mcp.tool()
 def bounding_box(body_name: str | None = None) -> dict:
@@ -898,7 +1041,9 @@ def screenshot(
     direction: one of current, front, back, bottom, top, left, right, iso-* (4 variants).
     Fusion handles fit-view internally for named directions.
     """
-    return viz_tools.screenshot(_get_adapter(), direction, width, height, transparent, anti_aliasing).to_dict()
+    return viz_tools.screenshot(
+        _get_adapter(), direction, width, height, transparent, anti_aliasing
+    ).to_dict()
 
 
 @mcp.tool()
@@ -950,12 +1095,18 @@ def screenshot_compare_with_marker(
     }
     """
     return viz_tools.screenshot_compare_with_marker(
-        _get_adapter(), before_marker_position, direction, width, height,
-        transparent, anti_aliasing,
+        _get_adapter(),
+        before_marker_position,
+        direction,
+        width,
+        height,
+        transparent,
+        anti_aliasing,
     ).to_dict()
 
 
 # ---------- Group 7: IO & Knowledge ----------
+
 
 @mcp.tool()
 def find_api(
@@ -1039,6 +1190,7 @@ def import_geometry(format: str, path: str) -> dict:
 
 # ---------- Escape hatch ----------
 
+
 @mcp.tool()
 def execute(script: str) -> dict:
     """Raw Python passthrough. The script must define `def run(_ctx):` as entry point.
@@ -1072,6 +1224,7 @@ def main() -> None:
 
     if argv and argv[0] == "corpus":
         from .corpus import build
+
         if len(argv) < 2 or argv[1] != "build":
             print("Usage: fusion-cad-mcp corpus build [options]", file=sys.stderr)
             raise SystemExit(2)

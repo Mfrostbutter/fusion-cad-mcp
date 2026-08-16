@@ -26,7 +26,10 @@ def _indent4(s: str) -> str:
     """Indent each line by 4 spaces so multi-line emit_resolve* output slots cleanly
     inside a `def run(_ctx):` body without IndentationError on subsequent lines.
     """
-    return textwrap.indent(s, "    ").lstrip()  # lstrip the FIRST line; the f-string already supplies indent for it
+    return textwrap.indent(
+        s, "    "
+    ).lstrip()  # lstrip the FIRST line; the f-string already supplies indent for it
+
 
 MEASURE_KINDS = {"distance", "min_distance", "angle"}
 
@@ -53,6 +56,7 @@ def _ok_runner(adapter: FusionAdapter, script: str, label: str) -> Envelope:
 
 
 # ---------- measure ----------
+
 
 def build_measure(entity_a: str, entity_b: str, kind: str = "distance") -> str:
     if kind not in MEASURE_KINDS:
@@ -107,7 +111,9 @@ def run(_ctx):
 """
 
 
-def measure(adapter: FusionAdapter, entity_a: str, entity_b: str, kind: str = "distance") -> Envelope:
+def measure(
+    adapter: FusionAdapter, entity_a: str, entity_b: str, kind: str = "distance"
+) -> Envelope:
     try:
         parse_handle(entity_a)
         parse_handle(entity_b)
@@ -118,6 +124,7 @@ def measure(adapter: FusionAdapter, entity_a: str, entity_b: str, kind: str = "d
 
 
 # ---------- find_mesh_using_ray (NEW May 2026) ----------
+
 
 def build_find_mesh_using_ray(
     component_name: str | None,
@@ -200,6 +207,7 @@ def find_mesh_using_ray(
 
 # ---------- ray_collision_with_mesh (NEW May 2026) ----------
 
+
 def build_ray_collision_with_mesh(
     mesh_handle: str,
     origin_mm: list[float],
@@ -258,7 +266,10 @@ def ray_collision_with_mesh(
 
 # ---------- fillet_edges (UI selection style) ----------
 
-def build_fillet_edges(edge_handles: list[str], radius: str, is_tangent_chain: bool = True, name: str | None = None) -> str:
+
+def build_fillet_edges(
+    edge_handles: list[str], radius: str, is_tangent_chain: bool = True, name: str | None = None
+) -> str:
     if not edge_handles:
         raise ValueError("edge_handles must be non-empty")
     if not radius:
@@ -401,6 +412,7 @@ def chamfer_edges(
 
 # ---------- project_to_sketch ----------
 
+
 def build_project_to_sketch(sketch_name: str, entity_handles: list[str]) -> str:
     if not entity_handles:
         raise ValueError("entity_handles must be non-empty")
@@ -465,9 +477,9 @@ def build_list_body_entities(
     for k in kinds:
         if k not in ENTITY_KINDS:
             raise ValueError(f"unknown entity kind {k!r}; must be one of {sorted(ENTITY_KINDS)}")
-    do_faces  = "face" in kinds
-    do_edges  = "edge" in kinds
-    do_verts  = "vertex" in kinds
+    do_faces = "face" in kinds
+    do_edges = "edge" in kinds
+    do_verts = "vertex" in kinds
 
     # Filter blocks live inside `for i in range(...):` which is itself inside `if {do_faces}:`.
     # That makes the loop body's indent 12 spaces. Filter statements use 12; their `continue` uses 16.
@@ -488,11 +500,17 @@ def build_list_body_entities(
         if ep not in {"x", "y", "z"}:
             raise ValueError("edge_parallel_to must be x, y, or z")
         if ep == "x":
-            cond = "abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) < 1e-6 and abs(sp.x - ep_.x) > 1e-6"
+            cond = (
+                "abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) < 1e-6 and abs(sp.x - ep_.x) > 1e-6"
+            )
         elif ep == "y":
-            cond = "abs(sp.x - ep_.x) < 1e-6 and abs(sp.z - ep_.z) < 1e-6 and abs(sp.y - ep_.y) > 1e-6"
+            cond = (
+                "abs(sp.x - ep_.x) < 1e-6 and abs(sp.z - ep_.z) < 1e-6 and abs(sp.y - ep_.y) > 1e-6"
+            )
         else:
-            cond = "abs(sp.x - ep_.x) < 1e-6 and abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) > 1e-6"
+            cond = (
+                "abs(sp.x - ep_.x) < 1e-6 and abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) > 1e-6"
+            )
         edge_filter_block = f"            if not ({cond}):\n                continue\n"
 
     if min_edge_length_mm is not None:
@@ -586,7 +604,9 @@ def list_body_entities(
     min_edge_length_mm: float | None = None,
 ) -> Envelope:
     try:
-        script = build_list_body_entities(body_name, kinds, face_normal_filter, edge_parallel_to, min_edge_length_mm)
+        script = build_list_body_entities(
+            body_name, kinds, face_normal_filter, edge_parallel_to, min_edge_length_mm
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "list_body_entities")

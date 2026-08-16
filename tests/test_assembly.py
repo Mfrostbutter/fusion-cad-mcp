@@ -1,4 +1,5 @@
 """Assembly tool generator + run-wrapper tests."""
+
 import ast
 
 import pytest
@@ -7,6 +8,7 @@ from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import assembly as asm
 
 # ---------- bodies_to_components ----------
+
 
 def test_bodies_to_components_parses_and_iterates_mapping():
     src = asm.build_bodies_to_components({"plate": "plate_comp", "bracket": "bracket_comp"})
@@ -30,6 +32,7 @@ def test_bodies_to_components_rejects_empty():
 
 
 # ---------- move_component ----------
+
 
 def test_move_translation_only_converts_mm_to_cm():
     src = asm.build_move_component("plate_comp", translation_mm=[20, -10, 5])
@@ -115,6 +118,7 @@ def test_move_rotation_emits_concrete_list_not_repr_with_None():
 
 # ---------- ground / unground ----------
 
+
 def test_ground_emits_true_flag():
     src = asm.build_ground_component("plate_comp", True)
     ast.parse(src)
@@ -128,6 +132,7 @@ def test_unground_emits_false_flag():
 
 # ---------- rigid group ----------
 
+
 def test_rigid_group_requires_at_least_2_components():
     with pytest.raises(ValueError):
         asm.build_create_rigid_group(["only_one"])
@@ -140,10 +145,11 @@ def test_rigid_group_parses():
     assert "rigidGroups.createInput" not in src
     assert "rigidGroups.add(occs, True)" in src
     assert "rigid_group_add_failed" in src  # over-constrained input raises; must be caught
-    assert "\"locked_trio\"" in src
+    assert '"locked_trio"' in src
 
 
 # ---------- contact set ----------
+
 
 def test_contact_set_requires_at_least_2_bodies():
     with pytest.raises(ValueError):
@@ -163,6 +169,7 @@ def test_contact_set_parses():
 
 # ---------- interference check ----------
 
+
 def test_interference_requires_at_least_2():
     with pytest.raises(ValueError):
         asm.build_interference_check(["one_body"])
@@ -178,10 +185,12 @@ def test_interference_parses_and_reports_per_pair_volume():
 
 # ---------- run wrappers ----------
 
+
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true}'):
         self.scripts: list[str] = []
         self.message = message
+
     def execute_script(self, s: str) -> Envelope:
         self.scripts.append(s)
         return Envelope(ok=True, message=self.message)

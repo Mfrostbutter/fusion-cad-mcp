@@ -110,7 +110,7 @@ def test_resume_that_recovers_nothing_exits_nonzero(site, monkeypatch, capsys):
 
 def test_extract_links_from_markdown_handles_link_forms():
     md = (
-        "See [A](A.htm), [B](B.htm#anchor), [C](C.htm \"C title\"), <D.htm>, "
+        'See [A](A.htm), [B](B.htm#anchor), [C](C.htm "C title"), <D.htm>, '
         "[off-site](https://example.com/E.htm)."
     )
     assert scraper.extract_links_from_markdown(md) == [

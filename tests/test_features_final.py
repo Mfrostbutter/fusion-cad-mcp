@@ -1,4 +1,5 @@
 """Final feature additions: move_body, rib, add_hole kinds."""
+
 import ast
 
 import pytest
@@ -30,7 +31,7 @@ def test_build_rib_parses():
     src = f.build_rib("rib_sk", "2 mm", side="symmetric")
     ast.parse(src)
     assert "Symmetric" in src
-    assert "createByString(\"2 mm\")" in src
+    assert 'createByString("2 mm")' in src
 
 
 def test_build_rib_rejects_unknown_side():
@@ -60,23 +61,31 @@ def test_add_hole_simple_alias_still_works():
 
 def test_add_hole_counterbore():
     src = f.build_add_hole(
-        "plate", [0, 0, 5], "5 mm", kind="counterbore",
-        cbore_diameter="10 mm", cbore_depth="3 mm",
+        "plate",
+        [0, 0, 5],
+        "5 mm",
+        kind="counterbore",
+        cbore_diameter="10 mm",
+        cbore_depth="3 mm",
     )
     ast.parse(src)
     assert "createCounterboreInput" in src
-    assert "createByString(\"10 mm\")" in src
-    assert "createByString(\"3 mm\")" in src
+    assert 'createByString("10 mm")' in src
+    assert 'createByString("3 mm")' in src
 
 
 def test_add_hole_countersink():
     src = f.build_add_hole(
-        "plate", [0, 0, 5], "5 mm", kind="countersink",
-        csink_diameter="10 mm", csink_angle="90 deg",
+        "plate",
+        [0, 0, 5],
+        "5 mm",
+        kind="countersink",
+        csink_diameter="10 mm",
+        csink_angle="90 deg",
     )
     ast.parse(src)
     assert "createCountersinkInput" in src
-    assert "createByString(\"90 deg\")" in src
+    assert 'createByString("90 deg")' in src
 
 
 def test_add_hole_counterbore_requires_args():

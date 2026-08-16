@@ -1,4 +1,5 @@
 """handles.py module: parse + emit helpers."""
+
 import pytest
 
 from fusion_cad_mcp import handles as h

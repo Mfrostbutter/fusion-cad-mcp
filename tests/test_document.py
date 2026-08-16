@@ -61,7 +61,10 @@ def test_search_docs_omits_project_when_none():
 def test_open_doc_wraps_open_op():
     a = FakeAdapter()
     document.open_doc(a, "my-part-v2")
-    assert a.calls[0] == ("read_query", {"queryType": "document", "operation": "open", "name": "my-part-v2"})
+    assert a.calls[0] == (
+        "read_query",
+        {"queryType": "document", "operation": "open", "name": "my-part-v2"},
+    )
 
 
 def test_save_passes_no_extras():

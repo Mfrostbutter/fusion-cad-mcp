@@ -10,6 +10,7 @@ from fusion_cad_mcp.tools import parameters as p
 
 # ---------- generator snapshots (Tier 1a) ----------
 
+
 def test_build_add_is_valid_python():
     src = p.build_add([{"name": "length", "expression": "100 mm", "units": "mm", "comment": ""}])
     tree = ast.parse(src)
@@ -40,7 +41,7 @@ def test_build_update_is_valid_python():
 
 def test_build_update_quotes_safely():
     """Names and expressions containing quotes must round-trip without breaking the script."""
-    src = p.build_update("tricky_name", 'thickness * 2.0 + 0 mm')
+    src = p.build_update("tricky_name", "thickness * 2.0 + 0 mm")
     # Should parse fine
     ast.parse(src)
 
@@ -52,6 +53,7 @@ def test_build_list_is_valid_python():
 
 
 # ---------- validation gates (Tier 1c) ----------
+
 
 def test_reserved_math_name_is_rejected():
     """pi/sin/sqrt as param names is a footgun; we block at generation."""
@@ -78,11 +80,14 @@ def test_numeric_leading_name_rejected():
 
 
 def test_valid_def_passes():
-    ok, _ = p._validate_param_defs([{"name": "length", "expression": "100 mm", "units": "mm", "comment": ""}])
+    ok, _ = p._validate_param_defs(
+        [{"name": "length", "expression": "100 mm", "units": "mm", "comment": ""}]
+    )
     assert ok is True
 
 
 # ---------- run wrappers with mock adapter ----------
+
 
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true, "added": [], "skipped": []}'):
@@ -103,7 +108,9 @@ def test_add_parameters_short_circuits_on_bad_def():
 
 
 def test_add_parameters_passes_through_on_success():
-    a = FakeAdapter(message=json.dumps({"ok": True, "added": [{"name": "h"}], "skipped": [], "total_params": 1}))
+    a = FakeAdapter(
+        message=json.dumps({"ok": True, "added": [{"name": "h"}], "skipped": [], "total_params": 1})
+    )
     env = p.add_parameters(a, [{"name": "h", "expression": "20 mm"}])
     assert env.ok is True
     assert env.result is not None
@@ -119,7 +126,9 @@ def test_update_parameter_rejects_empty_name():
 
 
 def test_update_parameter_returns_param_not_found_from_fusion():
-    a = FakeAdapter(message=json.dumps({"ok": False, "error": "param_not_found", "name": "missing"}))
+    a = FakeAdapter(
+        message=json.dumps({"ok": False, "error": "param_not_found", "name": "missing"})
+    )
     env = p.update_parameter(a, "missing", "100 mm")
     assert env.ok is False
     assert env.error == "param_not_found"

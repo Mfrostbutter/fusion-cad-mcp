@@ -30,6 +30,7 @@ def _sec(heading: str, body: str) -> dict:
 
 # ---------- unit level ----------
 
+
 def test_rare_term_outweighs_common_term():
     """A distinctive term must beat a common one, given idf."""
     idf = {"widget": 4.0, "the": 1.0}
@@ -51,8 +52,7 @@ def test_repeat_mentions_have_diminishing_returns():
 
     assert many > one, "more mentions should still score higher"
     assert many < one * reps / 2, (
-        f"damping is not clearly sublinear: {one} -> {many} "
-        f"(linear would be {one * reps})"
+        f"damping is not clearly sublinear: {one} -> {many} (linear would be {one * reps})"
     )
 
 
@@ -65,8 +65,7 @@ def test_covering_more_query_terms_beats_hammering_one():
     hammers_one = _score_section(terms, _sec("x", "alpha " * 20), idf)
 
     assert covers_all > hammers_one, (
-        f"matching every term ({covers_all}) should beat repeating one "
-        f"({hammers_one})"
+        f"matching every term ({covers_all}) should beat repeating one ({hammers_one})"
     )
 
 
@@ -92,6 +91,7 @@ def test_coverage_floor_is_a_sane_fraction():
 
 
 # ---------- end to end, against the real documents ----------
+
 
 @pytest.mark.parametrize(
     "query,expected_substring",

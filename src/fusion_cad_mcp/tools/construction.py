@@ -142,9 +142,9 @@ def build_create_construction_plane(
             f"    helper = root.sketches.add(root.xYConstructionPlane)\n"
             f"    helper.name = '_cplane_helper_3pt'\n"
             f"    helper.isComputeDeferred = True\n"
-            f"    sp1 = helper.sketchPoints.add(P({p1[0]/10}, {p1[1]/10}, {p1[2]/10}))\n"
-            f"    sp2 = helper.sketchPoints.add(P({p2[0]/10}, {p2[1]/10}, {p2[2]/10}))\n"
-            f"    sp3 = helper.sketchPoints.add(P({p3[0]/10}, {p3[1]/10}, {p3[2]/10}))\n"
+            f"    sp1 = helper.sketchPoints.add(P({p1[0] / 10}, {p1[1] / 10}, {p1[2] / 10}))\n"
+            f"    sp2 = helper.sketchPoints.add(P({p2[0] / 10}, {p2[1] / 10}, {p2[2] / 10}))\n"
+            f"    sp3 = helper.sketchPoints.add(P({p3[0] / 10}, {p3[1] / 10}, {p3[2] / 10}))\n"
             f"    helper.isComputeDeferred = False\n"
             f"    inp = root.constructionPlanes.createInput()\n"
             f"    inp.setByThreePoints(sp1, sp2, sp3)\n"
@@ -169,7 +169,9 @@ def build_create_construction_plane(
     )
 
 
-def create_construction_plane(adapter: FusionAdapter, kind: str, name: str | None = None, **kw) -> Envelope:
+def create_construction_plane(
+    adapter: FusionAdapter, kind: str, name: str | None = None, **kw
+) -> Envelope:
     try:
         script = build_create_construction_plane(kind, name=name, **kw)
     except (ValueError, TypeError) as e:
@@ -202,15 +204,17 @@ def build_create_construction_axis(
             f"    helper = root.sketches.add(root.xYConstructionPlane)\n"
             f"    helper.name = '_caxis_helper_2pt'\n"
             f"    helper.isComputeDeferred = True\n"
-            f"    sp1 = helper.sketchPoints.add(P({p1[0]/10}, {p1[1]/10}, {p1[2]/10}))\n"
-            f"    sp2 = helper.sketchPoints.add(P({p2[0]/10}, {p2[1]/10}, {p2[2]/10}))\n"
+            f"    sp1 = helper.sketchPoints.add(P({p1[0] / 10}, {p1[1] / 10}, {p1[2] / 10}))\n"
+            f"    sp2 = helper.sketchPoints.add(P({p2[0] / 10}, {p2[1] / 10}, {p2[2] / 10}))\n"
             f"    helper.isComputeDeferred = False\n"
             f"    inp = root.constructionAxes.createInput()\n"
             f"    inp.setByTwoPoints(sp1, sp2)\n"
         )
     else:  # normal_to_face_by_geometry
         if not body or not face_normal or len(face_normal) != 3:
-            raise ValueError("kind=normal_to_face_by_geometry requires body + face_normal [nx,ny,nz]")
+            raise ValueError(
+                "kind=normal_to_face_by_geometry requires body + face_normal [nx,ny,nz]"
+            )
         # Find face by matching normal direction; tolerance ~1e-3 on each component
         nx, ny, nz = face_normal
         face_finder = (
@@ -252,7 +256,9 @@ def build_create_construction_axis(
     )
 
 
-def create_construction_axis(adapter: FusionAdapter, kind: str, name: str | None = None, **kw) -> Envelope:
+def create_construction_axis(
+    adapter: FusionAdapter, kind: str, name: str | None = None, **kw
+) -> Envelope:
     try:
         script = build_create_construction_axis(kind, name=name, **kw)
     except (ValueError, TypeError) as e:
@@ -261,6 +267,7 @@ def create_construction_axis(adapter: FusionAdapter, kind: str, name: str | None
 
 
 # ---------- create_construction_point ----------
+
 
 def build_create_construction_point(coords: list[float], name: str | None = None) -> str:
     if not coords or len(coords) != 3:
@@ -277,7 +284,7 @@ def build_create_construction_point(coords: list[float], name: str | None = None
         + "    helper = root.sketches.add(root.xYConstructionPlane)\n"
         + "    helper.name = '_cpoint_helper'\n"
         + "    helper.isComputeDeferred = True\n"
-        + f"    sp = helper.sketchPoints.add(P({coords[0]/10}, {coords[1]/10}, {coords[2]/10}))\n"
+        + f"    sp = helper.sketchPoints.add(P({coords[0] / 10}, {coords[1] / 10}, {coords[2] / 10}))\n"
         + "    helper.isComputeDeferred = False\n"
         + "    inp = root.constructionPoints.createInput()\n"
         + "    inp.setByPoint(sp)\n"
@@ -289,7 +296,9 @@ def build_create_construction_point(coords: list[float], name: str | None = None
     )
 
 
-def create_construction_point(adapter: FusionAdapter, coords: list[float], name: str | None = None) -> Envelope:
+def create_construction_point(
+    adapter: FusionAdapter, coords: list[float], name: str | None = None
+) -> Envelope:
     try:
         script = build_create_construction_point(coords, name)
     except ValueError as e:
@@ -298,6 +307,7 @@ def create_construction_point(adapter: FusionAdapter, coords: list[float], name:
 
 
 # ---------- delete_construction ----------
+
 
 def build_delete_construction(name: str) -> str:
     return (

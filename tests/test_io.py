@@ -11,6 +11,7 @@ from fusion_cad_mcp.tools import io as io_tool
 
 # ---------- path validator ----------
 
+
 def test_path_rejects_relative():
     ok, err = io_tool._validate_path("plate.stl")
     assert ok is False
@@ -41,6 +42,7 @@ def test_path_rejects_empty():
 
 
 # ---------- export generators ----------
+
 
 def test_export_stl_emits_mesh_refinement_and_units():
     src = io_tool.build_export("stl", "plate", "C:/tmp/plate.stl", refinement="high", units="mm")
@@ -101,12 +103,14 @@ def test_export_unknown_format_rejected():
 def test_export_makedirs_present():
     """All export generators auto-create the parent directory."""
     for fmt in ("stl", "step", "iges", "3mf", "obj", "f3d"):
-        src = io_tool.build_export(fmt, None if fmt != "stl" and fmt != "obj" else "plate",
-                                    f"C:/tmp/x.{fmt}")
+        src = io_tool.build_export(
+            fmt, None if fmt != "stl" and fmt != "obj" else "plate", f"C:/tmp/x.{fmt}"
+        )
         assert "os.makedirs" in src, f"export {fmt} missing makedirs"
 
 
 # ---------- import generators ----------
+
 
 def test_import_step():
     src = io_tool.build_import_geometry("step", "C:/parts/widget.step")
@@ -135,10 +139,12 @@ def test_import_checks_file_exists():
 
 # ---------- run wrappers ----------
 
+
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true}'):
         self.scripts: list[str] = []
         self.message = message
+
     def execute_script(self, s: str) -> Envelope:
         self.scripts.append(s)
         return Envelope(ok=True, message=self.message)

@@ -1,4 +1,5 @@
 """Revolve / shell / add_hole_simple tests."""
+
 import ast
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from fusion_cad_mcp.tools import features as f
 
 # ---------- revolve ----------
+
 
 def test_build_revolve_full_360():
     src = f.build_revolve("profile_sk", 0, axis="z", operation="new_body", extent_kind="full")
@@ -17,7 +19,7 @@ def test_build_revolve_full_360():
 
 def test_build_revolve_angle_with_expression():
     src = f.build_revolve("profile_sk", 0, axis="x", extent_kind="angle", angle="90 deg")
-    assert "createByString(\"90 deg\")" in src
+    assert 'createByString("90 deg")' in src
 
 
 def test_build_revolve_rejects_angle_without_expression():
@@ -26,12 +28,15 @@ def test_build_revolve_rejects_angle_without_expression():
 
 
 def test_build_revolve_with_participants():
-    src = f.build_revolve("sk", 0, axis="z", operation="cut", extent_kind="full", participants=["plate"])
+    src = f.build_revolve(
+        "sk", 0, axis="z", operation="cut", extent_kind="full", participants=["plate"]
+    )
     assert "participantBodies" in src
     assert "_find_body" in src
 
 
 # ---------- shell ----------
+
 
 def test_build_shell_with_face_normal():
     src = f.build_shell("plate", "wall_thk", face_normals_to_remove=[[0, 0, 1]], direction="inside")
@@ -43,7 +48,7 @@ def test_build_shell_with_face_normal():
     assert "shell_in.outsideThickness" not in src
     assert "target_normals = [(0, 0, 1)]" in src
     assert "abs(n.x - tn[0])" in src
-    assert "createByString(\"wall_thk\")" in src
+    assert 'createByString("wall_thk")' in src
 
 
 def test_build_shell_outside_direction_sets_outside_thickness():
@@ -72,6 +77,7 @@ def test_build_shell_rejects_unknown_direction():
 
 # ---------- add_hole_simple ----------
 
+
 def test_build_add_hole_simple_all_extent():
     src = f.build_add_hole_simple("plate", [10, 5, 0], "5 mm", extent_kind="all")
     ast.parse(src)
@@ -90,9 +96,11 @@ def test_build_add_hole_simple_all_extent():
 
 
 def test_build_add_hole_simple_distance_extent():
-    src = f.build_add_hole_simple("plate", [0, 0, 0], "M5", extent_kind="distance", depth_expression="thickness / 2")
+    src = f.build_add_hole_simple(
+        "plate", [0, 0, 0], "M5", extent_kind="distance", depth_expression="thickness / 2"
+    )
     assert "setDistanceExtent" in src
-    assert "createByString(\"thickness / 2\")" in src
+    assert 'createByString("thickness / 2")' in src
 
 
 def test_build_add_hole_simple_requires_depth_for_distance():

@@ -1,4 +1,5 @@
 """Sketch additions (ellipse / arc / spline) tests."""
+
 import ast
 
 import pytest
@@ -32,7 +33,9 @@ def test_build_arc_center_start_end_parses():
 
 
 def test_build_arc_center_start_sweep_parses():
-    src = sk.build_add_arc("sk", "center_start_sweep", center=[0, 0], start=[10, 0], sweep_radians=1.5708)
+    src = sk.build_add_arc(
+        "sk", "center_start_sweep", center=[0, 0], start=[10, 0], sweep_radians=1.5708
+    )
     ast.parse(src)
     assert "addByCenterStartSweep" in src
     assert "1.5708" in src
