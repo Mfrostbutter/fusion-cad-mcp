@@ -246,6 +246,7 @@ def run(_ctx):
 
 # ---------- run wrappers ----------
 
+
 def _run_walker(adapter: FusionAdapter, script: str, label: str) -> Envelope:
     env = adapter.execute_script(script)
     if not env.ok:

@@ -15,6 +15,7 @@ def _parses(src: str) -> ast.Module:
 
 # ---------- generator snapshot ----------
 
+
 def test_build_bbox_parses_and_has_run():
     src = v.build_bounding_box()
     tree = _parses(src)
@@ -54,6 +55,7 @@ def test_name_filter_provided_is_json_safe():
 
 
 # ---------- run wrapper behavior ----------
+
 
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true, "bodies": [], "count": 0}'):
@@ -122,6 +124,7 @@ def test_mass_returns_material_field():
 
 
 # ---------- audit_feature_health ----------
+
 
 def test_build_audit_feature_health_parses_and_runs():
     src = v.build_audit_feature_health()

@@ -22,13 +22,16 @@ IMPORT_FORMATS = {"step", "iges", "sat", "smt", "f3d"}
 
 # STL refinement levels map to Fusion's MeshRefinementSettings enum
 STL_REFINEMENT = {
-    "low":    "MeshRefinementLow",
+    "low": "MeshRefinementLow",
     "medium": "MeshRefinementMedium",
-    "high":   "MeshRefinementHigh",
+    "high": "MeshRefinementHigh",
 }
 
 _WIN_RESERVED = {
-    "con", "prn", "aux", "nul",
+    "con",
+    "prn",
+    "aux",
+    "nul",
     *(f"com{i}" for i in range(1, 10)),
     *(f"lpt{i}" for i in range(1, 10)),
 }
@@ -72,6 +75,7 @@ def _header() -> str:
 
 # ---------- export ----------
 
+
 def build_export(
     format: str,
     body: str | None,
@@ -87,7 +91,9 @@ def build_export(
     # Fusion ExportManager API names per format
     if fmt == "stl":
         if refinement not in STL_REFINEMENT:
-            raise ValueError(f"refinement must be one of {sorted(STL_REFINEMENT)} for STL, got {refinement!r}")
+            raise ValueError(
+                f"refinement must be one of {sorted(STL_REFINEMENT)} for STL, got {refinement!r}"
+            )
         return _build_export_stl(body, path, refinement, units)
     elif fmt == "3mf":
         return _build_export_3mf(body, path)
@@ -125,11 +131,11 @@ def _find_body(root, name):
 
 def _build_export_stl(body: str | None, path: str, refinement: str, units: str) -> str:
     units_enum_map = {
-        "mm":     "MillimeterDistanceUnits",
-        "cm":     "CentimeterDistanceUnits",
-        "m":      "MeterDistanceUnits",
-        "inch":   "InchDistanceUnits",
-        "in":     "InchDistanceUnits",
+        "mm": "MillimeterDistanceUnits",
+        "cm": "CentimeterDistanceUnits",
+        "m": "MeterDistanceUnits",
+        "inch": "InchDistanceUnits",
+        "in": "InchDistanceUnits",
     }
     if units not in units_enum_map:
         raise ValueError(f"units must be one of {sorted(units_enum_map)} for STL, got {units!r}")
@@ -151,10 +157,13 @@ def _build_export_stl(body: str | None, path: str, refinement: str, units: str) 
         + "    if design is None:\n"
         + "        print(json.dumps({'ok': False, 'error': 'no_active_design'})); return\n"
         + "    root = design.rootComponent\n"
-        + (f"    b = _find_body(root, {json.dumps(body)})\n"
-           f"    if b is None:\n"
-           f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
-           if body else "")
+        + (
+            f"    b = _find_body(root, {json.dumps(body)})\n"
+            f"    if b is None:\n"
+            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
+            if body
+            else ""
+        )
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
         + "    em = design.exportManager\n"
         + f"    opts = em.createSTLExportOptions({target_expr}, {json.dumps(path)})\n"
@@ -184,10 +193,13 @@ def _build_export_3mf(body: str | None, path: str) -> str:
         + "    if design is None:\n"
         + "        print(json.dumps({'ok': False, 'error': 'no_active_design'})); return\n"
         + "    root = design.rootComponent\n"
-        + (f"    b = _find_body(root, {json.dumps(body)})\n"
-           f"    if b is None:\n"
-           f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
-           if body else "")
+        + (
+            f"    b = _find_body(root, {json.dumps(body)})\n"
+            f"    if b is None:\n"
+            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
+            if body
+            else ""
+        )
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
         + "    em = design.exportManager\n"
         + f"    opts = em.createC3MFExportOptions({target_expr}, {json.dumps(path)})\n"
@@ -199,7 +211,9 @@ def _build_export_3mf(body: str | None, path: str) -> str:
 
 def _build_export_obj(body: str | None, path: str, refinement: str) -> str:
     if refinement not in STL_REFINEMENT:
-        raise ValueError(f"refinement must be one of {sorted(STL_REFINEMENT)} for OBJ, got {refinement!r}")
+        raise ValueError(
+            f"refinement must be one of {sorted(STL_REFINEMENT)} for OBJ, got {refinement!r}"
+        )
     refinement_enum = STL_REFINEMENT[refinement]
     body_block = ""
     target_expr = "design.rootComponent"
@@ -215,10 +229,13 @@ def _build_export_obj(body: str | None, path: str, refinement: str) -> str:
         + "    if design is None:\n"
         + "        print(json.dumps({'ok': False, 'error': 'no_active_design'})); return\n"
         + "    root = design.rootComponent\n"
-        + (f"    b = _find_body(root, {json.dumps(body)})\n"
-           f"    if b is None:\n"
-           f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
-           if body else "")
+        + (
+            f"    b = _find_body(root, {json.dumps(body)})\n"
+            f"    if b is None:\n"
+            f"        print(json.dumps({{'ok': False, 'error': 'body_not_found', 'name': {json.dumps(body)}}})); return\n"
+            if body
+            else ""
+        )
         + f"    os.makedirs(os.path.dirname({json.dumps(path)}), exist_ok=True)\n"
         + "    em = design.exportManager\n"
         + f"    opts = em.createOBJExportOptions({target_expr}, {json.dumps(path)})\n"
@@ -267,6 +284,7 @@ def export(
 
 # ---------- import_geometry ----------
 
+
 def build_import_geometry(format: str, path: str) -> str:
     fmt = format.lower()
     if fmt not in IMPORT_FORMATS:
@@ -275,9 +293,9 @@ def build_import_geometry(format: str, path: str) -> str:
     factory = {
         "step": "createSTEPImportOptions",
         "iges": "createIGESImportOptions",
-        "sat":  "createSATImportOptions",
-        "smt":  "createSMTImportOptions",
-        "f3d":  "createFusionArchiveImportOptions",
+        "sat": "createSATImportOptions",
+        "smt": "createSMTImportOptions",
+        "f3d": "createFusionArchiveImportOptions",
     }[fmt]
 
     return (

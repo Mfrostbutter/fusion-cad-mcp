@@ -54,7 +54,7 @@ def build(argv: list[str] | None = None) -> int:
             print("ERROR: --out needs a directory", file=sys.stderr)
             return 2
         out_dir = Path(argv[i + 1]).expanduser()
-        del argv[i:i + 2]
+        del argv[i : i + 2]
 
     scraper.configure(out_dir)
     print(f"Building Fusion API corpus in {scraper.OUT_DIR}", file=sys.stderr)
@@ -66,6 +66,7 @@ def build(argv: list[str] | None = None) -> int:
     # Preview badges and "Introduced in" versions are derived in a second pass
     # so a partial scrape can be resumed without redoing the crawl.
     from . import backfill_metadata
+
     backfill_metadata.main(corpus_path=scraper.CORPUS_PATH)
     print(f"Corpus ready: {scraper.CORPUS_PATH}", file=sys.stderr)
     return 0

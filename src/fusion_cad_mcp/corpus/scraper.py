@@ -75,6 +75,8 @@ def configure(out_dir: Path) -> None:
     FRONTIER_PATH = OUT_DIR / "frontier.json"
     LOG_PATH = OUT_DIR / "scraper.log"
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
 DEFAULT_USER_AGENT = "fusion-cad-mcp-corpus-builder/0.1 (local cache; contact configurable)"
 PREVIEW_MARKER = "This functionality is provided as a preview"
 INTRODUCED_RE = re.compile(r"Introduced in version\s+([^\n\r]+)", re.IGNORECASE)
@@ -96,10 +98,12 @@ SEEDS = [
 ]
 
 SESSION = requests.Session()
-SESSION.headers.update({
-    "User-Agent": DEFAULT_USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml",
-})
+SESSION.headers.update(
+    {
+        "User-Agent": DEFAULT_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml",
+    }
+)
 
 
 def log(msg: str) -> None:
@@ -167,7 +171,11 @@ def classify(slug: str) -> tuple[str, str]:
     if "_" in name:
         parent, member = name.split("_", 1)
         # Heuristic: if member looks like a method/property (camelCase), it's a member page
-        kind = "member" if member and (member[0].islower() or member in {"classType", "objectType"}) else "object"
+        kind = (
+            "member"
+            if member and (member[0].islower() or member in {"classType", "objectType"})
+            else "object"
+        )
         return (parent, kind)
     return (name, "object")
 
@@ -407,10 +415,18 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="fusion-cad-mcp corpus build")
     ap.add_argument("--limit", type=int, default=None, help="Stop after N pages (smoke test)")
     ap.add_argument("--rate", type=float, default=1.0, help="Seconds between requests")
-    ap.add_argument("--resume", action="store_true", help="Continue a prior crawl: skip pages already on disk and restore the pending queue")
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue a prior crawl: skip pages already on disk and restore the pending queue",
+    )
     ap.add_argument("--contact", default="", help="Optional contact string for the User-Agent")
     ap.add_argument("--user-agent", default="", help="Override the default User-Agent")
-    ap.add_argument("--i-accept-autodesk-terms", action="store_true", help="Confirm this user-initiated local cache build complies with Autodesk terms")
+    ap.add_argument(
+        "--i-accept-autodesk-terms",
+        action="store_true",
+        help="Confirm this user-initiated local cache build complies with Autodesk terms",
+    )
     args = ap.parse_args(sys.argv[1:] if argv is None else argv)
 
     if not args.i_accept_autodesk_terms:
@@ -438,7 +454,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.user_agent:
         SESSION.headers["User-Agent"] = args.user_agent
     elif args.contact:
-        SESSION.headers["User-Agent"] = f"fusion-cad-mcp-corpus-builder/0.1 (local cache; contact {args.contact})"
+        SESSION.headers["User-Agent"] = (
+            f"fusion-cad-mcp-corpus-builder/0.1 (local cache; contact {args.contact})"
+        )
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     try:

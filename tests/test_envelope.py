@@ -95,9 +95,7 @@ def test_image_content_parses_into_image_field():
     raw = {
         "id": 1,
         "jsonrpc": "2.0",
-        "result": {
-            "content": [{"type": "image", "data": "iVBORw0KGgo=", "mimeType": "image/png"}]
-        },
+        "result": {"content": [{"type": "image", "data": "iVBORw0KGgo=", "mimeType": "image/png"}]},
     }
     env = from_fusion_response(raw)
     assert env.ok is True

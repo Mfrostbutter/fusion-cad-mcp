@@ -23,11 +23,25 @@ from __future__ import annotations
 import json
 import re
 
-VALID_KINDS = frozenset({
-    "sketch", "profile", "body", "face", "edge", "vertex",
-    "feature", "component", "occurrence", "param", "joint",
-    "ucs", "plane", "axis", "point",
-})
+VALID_KINDS = frozenset(
+    {
+        "sketch",
+        "profile",
+        "body",
+        "face",
+        "edge",
+        "vertex",
+        "feature",
+        "component",
+        "occurrence",
+        "param",
+        "joint",
+        "ucs",
+        "plane",
+        "axis",
+        "point",
+    }
+)
 
 # token: alphanumeric, +, /, =, _, -, . (entityToken is base64-ish + some symbols)
 _HANDLE_RE = re.compile(r"^([a-z][a-z_]*):([^:]*):([A-Za-z0-9+/=_\-.]+)$")

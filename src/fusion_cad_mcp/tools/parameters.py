@@ -29,11 +29,29 @@ from ..envelope import Envelope, parse_stdout_json
 # generation time so it never reaches Fusion.
 RESERVED_MATH_NAMES = frozenset(
     [
-        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-        "sinh", "cosh", "tanh",
-        "abs", "sqrt", "exp", "log", "ln", "log10",
-        "min", "max", "round", "floor", "ceil",
-        "pi", "e",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "sinh",
+        "cosh",
+        "tanh",
+        "abs",
+        "sqrt",
+        "exp",
+        "log",
+        "ln",
+        "log10",
+        "min",
+        "max",
+        "round",
+        "floor",
+        "ceil",
+        "pi",
+        "e",
     ]
 )
 
@@ -170,6 +188,7 @@ def run(_ctx):
 
 # ---------- run wrappers ----------
 
+
 def add_parameters(adapter: FusionAdapter, defs: list[dict[str, Any]]) -> Envelope:
     ok, err = _validate_param_defs(defs)
     if not ok:
@@ -189,7 +208,9 @@ def update_parameter(adapter: FusionAdapter, name: str, expression: str) -> Enve
     if not name or not isinstance(name, str):
         return Envelope(ok=False, error="invalid_name", message="name must be a non-empty string")
     if not expression or not isinstance(expression, str):
-        return Envelope(ok=False, error="invalid_expression", message="expression must be a non-empty string")
+        return Envelope(
+            ok=False, error="invalid_expression", message="expression must be a non-empty string"
+        )
     env = adapter.execute_script(build_update(name, expression))
     if not env.ok:
         return env
@@ -197,7 +218,9 @@ def update_parameter(adapter: FusionAdapter, name: str, expression: str) -> Enve
     if parsed is None:
         return Envelope(ok=False, error="parse_failed", message=env.message)
     if parsed.get("ok") is False:
-        return Envelope(ok=False, error=parsed.get("error", "fusion_error"), message=env.message, result=parsed)
+        return Envelope(
+            ok=False, error=parsed.get("error", "fusion_error"), message=env.message, result=parsed
+        )
     return Envelope(ok=True, message=env.message, result=parsed)
 
 

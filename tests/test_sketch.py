@@ -12,6 +12,7 @@ from fusion_cad_mcp.tools import sketch as sk
 
 # ---------- entity ref resolver (pure unit) ----------
 
+
 def test_resolve_origin():
     assert sk._resolve_ref("origin") == "sk.originPoint"
 
@@ -26,7 +27,10 @@ def test_resolve_line_start_end():
 
 
 def test_resolve_circle_center():
-    assert sk._resolve_ref("circle:2:center") == "sk.sketchCurves.sketchCircles.item(2).centerSketchPoint"
+    assert (
+        sk._resolve_ref("circle:2:center")
+        == "sk.sketchCurves.sketchCircles.item(2).centerSketchPoint"
+    )
 
 
 def test_resolve_arc_subentities():
@@ -68,6 +72,7 @@ def test_resolve_rejects_malformed_ref():
 
 # ---------- create_sketch generator ----------
 
+
 def test_build_create_sketch_xy():
     src = sk.build_create_sketch("xy", "outer")
     ast.parse(src)
@@ -86,6 +91,7 @@ def test_build_create_sketch_checks_name_collision():
 
 
 # ---------- add_line / add_rectangle / add_circle / add_polygon generators ----------
+
 
 def test_build_add_line_converts_mm_to_cm():
     src = sk.build_add_line("outer", [80, 50], [120, 50])
@@ -147,6 +153,7 @@ def test_build_add_polygon_rejects_few_sides():
 
 # ---------- geometric constraint generator ----------
 
+
 def test_build_horizontal_constraint():
     src = sk.build_add_geometric_constraint("outer", "horizontal", ["line:0"])
     ast.parse(src)
@@ -180,6 +187,7 @@ def test_constraint_rejects_unknown_kind():
 
 # ---------- dimension generator ----------
 
+
 def test_build_distance_h_dim_with_param_expression():
     """Verifies G9-corrected behavior: parameter-name expression is passed verbatim."""
     src = sk.build_add_dimension("outer", "distance_h", ["line:0:start", "line:0:end"], "length")
@@ -207,12 +215,15 @@ def test_build_distance_rejects_empty_expression():
 
 
 def test_dim_text_pos_converts_mm_to_cm():
-    src = sk.build_add_dimension("outer", "distance_h", ["line:0:start", "line:0:end"], "100 mm", text_pos=[20, 30])
+    src = sk.build_add_dimension(
+        "outer", "distance_h", ["line:0:start", "line:0:end"], "100 mm", text_pos=[20, 30]
+    )
     # 20mm -> 2.0cm, 30mm -> 3.0cm
     assert "P(2.0, 3.0, 0)" in src
 
 
 # ---------- assert_profiles ----------
+
 
 def test_build_assert_profiles_emits_actual_vs_expected():
     src = sk.build_assert_profiles("outer", 1)
@@ -222,6 +233,7 @@ def test_build_assert_profiles_emits_actual_vs_expected():
 
 
 # ---------- run wrappers with mock adapter ----------
+
 
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true}'):
@@ -274,6 +286,7 @@ def test_assert_profiles_ok_when_match():
 
 
 # ---------- probe_sketch_dimensions ----------
+
 
 def test_build_probe_sketch_dimensions_parses():
     src = sk.build_probe_sketch_dimensions("clip_profile")
@@ -348,6 +361,7 @@ def test_probe_surfaces_sketch_not_found():
 
 
 # ---------- edit_sketch_dimension ----------
+
 
 def test_build_edit_sketch_dimension_parses():
     src = sk.build_edit_sketch_dimension("clip_profile", "d278", "80 mm")
@@ -470,6 +484,7 @@ def test_edit_emits_value_mm_for_angle_payload_returns_deg():
 
 
 # ---------- duplicate sketch-name resolution ----------
+
 
 def test_build_probe_emits_ambiguity_resolver():
     """Generator must embed _resolve_sketch (replaces the old _find_sketch_anywhere

@@ -85,6 +85,7 @@ def _resolve_skill_doc(name: str) -> Path | None:
 
 # ---------- API corpus search ----------
 
+
 @dataclass
 class CorpusIndex:
     """In-memory index of the scraped API corpus.

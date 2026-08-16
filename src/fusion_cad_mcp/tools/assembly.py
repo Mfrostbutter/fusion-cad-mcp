@@ -76,6 +76,7 @@ def _header() -> str:
 
 # ---------- bodies_to_components ----------
 
+
 def build_bodies_to_components(mapping: dict[str, str]) -> str:
     """Convert root-level bodies to named components (one per entry).
 
@@ -125,6 +126,7 @@ def bodies_to_components(adapter: FusionAdapter, mapping: dict[str, str]) -> Env
 
 # ---------- move_component ----------
 
+
 def build_move_component(
     name: str,
     translation_mm: list[float] | None = None,
@@ -133,7 +135,9 @@ def build_move_component(
     rotation_origin_mm: list[float] | None = None,
 ) -> str:
     if translation_mm is None and rotation_axis is None:
-        raise ValueError("must provide at least translation_mm or (rotation_axis + rotation_angle_deg)")
+        raise ValueError(
+            "must provide at least translation_mm or (rotation_axis + rotation_angle_deg)"
+        )
     if rotation_axis is not None and rotation_angle_deg is None:
         raise ValueError("rotation_axis requires rotation_angle_deg")
     if translation_mm is not None and len(translation_mm) != 3:
@@ -203,7 +207,7 @@ def run(_ctx):
     print(json.dumps({{
         "ok": True,
         "component": {repr(name)},
-        "translation_mm": {repr(translation_mm) if translation_mm else repr([0,0,0])},
+        "translation_mm": {repr(translation_mm) if translation_mm else repr([0, 0, 0])},
         "rotation_axis": {repr(rotation_axis)},
         "rotation_angle_deg": {repr(rotation_angle_deg)},
         "before_translation_mm": [round(v, 4) for v in before_mm],
@@ -222,13 +226,16 @@ def move_component(
     rotation_origin_mm: list[float] | None = None,
 ) -> Envelope:
     try:
-        script = build_move_component(name, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm)
+        script = build_move_component(
+            name, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "move_component")
 
 
 # ---------- ground / unground ----------
+
 
 def build_ground_component(name: str, grounded: bool) -> str:
     flag = "True" if grounded else "False"
@@ -264,6 +271,7 @@ def unground_component(adapter: FusionAdapter, name: str) -> Envelope:
 
 
 # ---------- create_rigid_group ----------
+
 
 def build_create_rigid_group(component_names: list[str], name: str | None = None) -> str:
     if not component_names or len(component_names) < 2:
@@ -306,7 +314,9 @@ def run(_ctx):
 """
 
 
-def create_rigid_group(adapter: FusionAdapter, component_names: list[str], name: str | None = None) -> Envelope:
+def create_rigid_group(
+    adapter: FusionAdapter, component_names: list[str], name: str | None = None
+) -> Envelope:
     try:
         script = build_create_rigid_group(component_names, name)
     except ValueError as e:
@@ -315,6 +325,7 @@ def create_rigid_group(adapter: FusionAdapter, component_names: list[str], name:
 
 
 # ---------- create_contact_set ----------
+
 
 def build_create_contact_set(body_names: list[str]) -> str:
     if not body_names or len(body_names) < 2:
@@ -371,9 +382,12 @@ def create_contact_set(adapter: FusionAdapter, body_names: list[str]) -> Envelop
 
 # ---------- interference_check ----------
 
+
 def build_interference_check(entity_names: list[str]) -> str:
     if not entity_names or len(entity_names) < 2:
-        raise ValueError("interference check requires at least 2 entity names (bodies or components)")
+        raise ValueError(
+            "interference check requires at least 2 entity names (bodies or components)"
+        )
     return f"""\
 {_header()}{_FIND_BODY_HELPER}{_FIND_OCC_HELPER}
 
@@ -430,6 +444,7 @@ def interference_check(adapter: FusionAdapter, entity_names: list[str]) -> Envel
 
 
 # ---------- set_joint_limits ----------
+
 
 def build_set_joint_limits(
     joint_name: str,
@@ -556,6 +571,7 @@ def set_joint_limits(
 
 
 # ---------- drive_joint ----------
+
 
 def build_drive_joint(joint_name: str, value: str) -> str:
     if not value:
@@ -775,14 +791,10 @@ def build_create_joint(
 
     offset_block = ""
     if offset_mm is not None:
-        offset_block = (
-            f"    joint_input.offset = adsk.core.ValueInput.createByString({json.dumps(offset_mm)})\n"
-        )
+        offset_block = f"    joint_input.offset = adsk.core.ValueInput.createByString({json.dumps(offset_mm)})\n"
     angle_block = ""
     if angle_deg is not None:
-        angle_block = (
-            f"    joint_input.angle = adsk.core.ValueInput.createByString({json.dumps(angle_deg)})\n"
-        )
+        angle_block = f"    joint_input.angle = adsk.core.ValueInput.createByString({json.dumps(angle_deg)})\n"
 
     rename_block = ""
     if name is not None:
@@ -849,7 +861,13 @@ def create_joint(
 ) -> Envelope:
     try:
         script = build_create_joint(
-            geometry_one, geometry_two, motion_type, axis, offset_mm, angle_deg, name,
+            geometry_one,
+            geometry_two,
+            motion_type,
+            axis,
+            offset_mm,
+            angle_deg,
+            name,
         )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))

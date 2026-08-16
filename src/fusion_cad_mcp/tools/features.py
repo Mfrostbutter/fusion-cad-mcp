@@ -23,10 +23,10 @@ from ..envelope import Envelope, parse_stdout_json
 # ---------- shared helpers ----------
 
 OPERATION_ENUM = {
-    "new_body":      "NewBodyFeatureOperation",
-    "join":          "JoinFeatureOperation",
-    "cut":           "CutFeatureOperation",
-    "intersect":     "IntersectFeatureOperation",
+    "new_body": "NewBodyFeatureOperation",
+    "join": "JoinFeatureOperation",
+    "cut": "CutFeatureOperation",
+    "intersect": "IntersectFeatureOperation",
     "new_component": "NewComponentFeatureOperation",
 }
 
@@ -167,13 +167,9 @@ def build_extrude(
             f"adsk.core.ValueInput.createByString({json.dumps(expression)}), {is_full})"
         )
     elif extent_kind == "all_positive":
-        extent_setter = (
-            "ext_in.setAllExtent(adsk.fusion.ExtentDirections.PositiveExtentDirection)"
-        )
+        extent_setter = "ext_in.setAllExtent(adsk.fusion.ExtentDirections.PositiveExtentDirection)"
     else:  # all_negative
-        extent_setter = (
-            "ext_in.setAllExtent(adsk.fusion.ExtentDirections.NegativeExtentDirection)"
-        )
+        extent_setter = "ext_in.setAllExtent(adsk.fusion.ExtentDirections.NegativeExtentDirection)"
 
     # participants
     parts_block = ""
@@ -248,8 +244,15 @@ def extrude(
 ) -> Envelope:
     try:
         script = build_extrude(
-            sketch, profile_index, operation, extent_kind, expression,
-            direction, is_full_length, participants, name,
+            sketch,
+            profile_index,
+            operation,
+            extent_kind,
+            expression,
+            direction,
+            is_full_length,
+            participants,
+            name,
         )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
@@ -285,11 +288,17 @@ def build_fillet_edges_by_geometry(
     else:
         # parallel to axis A means the other two coords match between endpoints
         if parallel_to == "x":
-            axis_check = "abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.x - ep.x) > 1e-6"
+            axis_check = (
+                "abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.x - ep.x) > 1e-6"
+            )
         elif parallel_to == "y":
-            axis_check = "abs(sp.x - ep.x) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.y - ep.y) > 1e-6"
+            axis_check = (
+                "abs(sp.x - ep.x) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.y - ep.y) > 1e-6"
+            )
         else:  # z
-            axis_check = "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6"
+            axis_check = (
+                "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6"
+            )
 
     is_tan = "True" if is_tangent_chain else "False"
     name_block = f"    feat.name = {json.dumps(name)}\n" if name else ""
@@ -346,7 +355,9 @@ def fillet_edges_by_geometry(
     name: str | None = None,
 ) -> Envelope:
     try:
-        script = build_fillet_edges_by_geometry(body, radius, parallel_to, min_length_mm, is_tangent_chain, name)
+        script = build_fillet_edges_by_geometry(
+            body, radius, parallel_to, min_length_mm, is_tangent_chain, name
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "fillet_edges_by_geometry")
@@ -387,11 +398,17 @@ def build_chamfer_edges_by_geometry(
     if parallel_to == "any":
         axis_check = "True"
     elif parallel_to == "x":
-        axis_check = "abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.x - ep.x) > 1e-6"
+        axis_check = (
+            "abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.x - ep.x) > 1e-6"
+        )
     elif parallel_to == "y":
-        axis_check = "abs(sp.x - ep.x) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.y - ep.y) > 1e-6"
+        axis_check = (
+            "abs(sp.x - ep.x) < 1e-6 and abs(sp.z - ep.z) < 1e-6 and abs(sp.y - ep.y) > 1e-6"
+        )
     else:
-        axis_check = "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6"
+        axis_check = (
+            "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6"
+        )
 
     # Current chamfer API: createInput2() takes no args; edge sets are added
     # via chamferEdgeSets.add*ChamferEdgeSet (verified live in Fusion
@@ -468,13 +485,16 @@ def chamfer_edges_by_geometry(
     name: str | None = None,
 ) -> Envelope:
     try:
-        script = build_chamfer_edges_by_geometry(body, distance, parallel_to, kind, distance2, angle, min_length_mm, name)
+        script = build_chamfer_edges_by_geometry(
+            body, distance, parallel_to, kind, distance2, angle, min_length_mm, name
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "chamfer_edges_by_geometry")
 
 
 # ---------- mirror_feature ----------
+
 
 def build_mirror_feature(
     feature_or_body: str,
@@ -544,6 +564,7 @@ def mirror_feature(
 
 
 # ---------- pattern_rectangular ----------
+
 
 def build_pattern_rectangular(
     feature_or_body: str,
@@ -669,7 +690,14 @@ def pattern_rectangular(
 ) -> Envelope:
     try:
         script = build_pattern_rectangular(
-            feature_or_body, x_axis, x_count, x_distance, y_axis, y_count, y_distance, name,
+            feature_or_body,
+            x_axis,
+            x_count,
+            x_distance,
+            y_axis,
+            y_count,
+            y_distance,
+            name,
         )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
@@ -677,6 +705,7 @@ def pattern_rectangular(
 
 
 # ---------- pattern_circular ----------
+
 
 def build_pattern_circular(
     feature_or_body: str,
@@ -762,7 +791,11 @@ def pattern_circular(
 
 # ---------- combine ----------
 
-COMBINE_OPS = {"join": "JoinFeatureOperation", "cut": "CutFeatureOperation", "intersect": "IntersectFeatureOperation"}
+COMBINE_OPS = {
+    "join": "JoinFeatureOperation",
+    "cut": "CutFeatureOperation",
+    "intersect": "IntersectFeatureOperation",
+}
 
 
 def build_combine(
@@ -862,7 +895,9 @@ def build_revolve(
     if operation not in OPERATION_ENUM:
         raise ValueError(f"operation must be one of {sorted(OPERATION_ENUM)}, got {operation!r}")
     if extent_kind not in REVOLVE_EXTENTS:
-        raise ValueError(f"extent_kind must be one of {sorted(REVOLVE_EXTENTS)}, got {extent_kind!r}")
+        raise ValueError(
+            f"extent_kind must be one of {sorted(REVOLVE_EXTENTS)}, got {extent_kind!r}"
+        )
     if extent_kind == "angle" and not angle:
         raise ValueError("extent_kind=angle requires angle expression")
 
@@ -870,7 +905,9 @@ def build_revolve(
     op_expr = f"adsk.fusion.FeatureOperations.{OPERATION_ENUM[operation]}"
 
     if extent_kind == "full":
-        extent_setter = "rev_in.setAngleExtent(False, adsk.core.ValueInput.createByString('360 deg'))"
+        extent_setter = (
+            "rev_in.setAngleExtent(False, adsk.core.ValueInput.createByString('360 deg'))"
+        )
     else:
         sym = "True" if is_symmetric else "False"
         extent_setter = f"rev_in.setAngleExtent({sym}, adsk.core.ValueInput.createByString({json.dumps(angle)}))"
@@ -947,13 +984,24 @@ def revolve(
     name: str | None = None,
 ) -> Envelope:
     try:
-        script = build_revolve(sketch, profile_index, axis, operation, extent_kind, angle, is_symmetric, participants, name)
+        script = build_revolve(
+            sketch,
+            profile_index,
+            axis,
+            operation,
+            extent_kind,
+            angle,
+            is_symmetric,
+            participants,
+            name,
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "revolve")
 
 
 # ---------- shell ----------
+
 
 def build_shell(
     body: str,
@@ -971,13 +1019,9 @@ def build_shell(
     # does not exist; verified live 2026-07-18). Direction is expressed by
     # which of the two independent thickness properties get set.
     if direction == "inside":
-        thickness_setters = (
-            f"shell_in.insideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})"
-        )
+        thickness_setters = f"shell_in.insideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})"
     elif direction == "outside":
-        thickness_setters = (
-            f"shell_in.outsideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})"
-        )
+        thickness_setters = f"shell_in.outsideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})"
     else:  # both: same expression applied to each side
         thickness_setters = (
             f"shell_in.insideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})\n"
@@ -989,9 +1033,7 @@ def build_shell(
 
     face_finder = ""
     if face_normals_to_remove:
-        normals_str = ", ".join(
-            f"({n[0]}, {n[1]}, {n[2]})" for n in face_normals_to_remove
-        )
+        normals_str = ", ".join(f"({n[0]}, {n[1]}, {n[2]})" for n in face_normals_to_remove)
         face_finder = f"""    target_faces = adsk.core.ObjectCollection.create()
     target_normals = [{normals_str}]
     for i in range(body.faces.count):
@@ -1062,6 +1104,7 @@ def shell(
 
 # ---------- move_body ----------
 
+
 def build_move_body(
     body: str,
     translation_mm: list[float] | None = None,
@@ -1071,7 +1114,9 @@ def build_move_body(
     name: str | None = None,
 ) -> str:
     if translation_mm is None and rotation_axis is None:
-        raise ValueError("must provide at least translation_mm or rotation_axis + rotation_angle_deg")
+        raise ValueError(
+            "must provide at least translation_mm or rotation_axis + rotation_angle_deg"
+        )
     if rotation_axis is not None and rotation_angle_deg is None:
         raise ValueError("rotation_axis requires rotation_angle_deg")
     if translation_mm is not None and len(translation_mm) != 3:
@@ -1087,6 +1132,7 @@ def build_move_body(
         origin = rotation_origin_mm or [0, 0, 0]
         ox, oy, oz = (v / 10.0 for v in origin)
         import math
+
         angle_rad = (rotation_angle_deg or 0) * math.pi / 180.0
         rotation_block = f"""
     rot = adsk.core.Matrix3D.create()
@@ -1136,7 +1182,9 @@ def move_body(
     name: str | None = None,
 ) -> Envelope:
     try:
-        script = build_move_body(body, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm, name)
+        script = build_move_body(
+            body, translation_mm, rotation_axis, rotation_angle_deg, rotation_origin_mm, name
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "move_body")
@@ -1147,7 +1195,13 @@ def move_body(
 RIB_SIDES = {"left", "right", "symmetric"}
 
 
-def build_rib(sketch: str, thickness: str, side: str = "symmetric", extend_profile: bool = True, name: str | None = None) -> str:
+def build_rib(
+    sketch: str,
+    thickness: str,
+    side: str = "symmetric",
+    extend_profile: bool = True,
+    name: str | None = None,
+) -> str:
     if not thickness:
         raise ValueError("thickness expression required")
     if side not in RIB_SIDES:
@@ -1198,7 +1252,14 @@ def run(_ctx):
 """
 
 
-def rib(adapter: FusionAdapter, sketch: str, thickness: str, side: str = "symmetric", extend_profile: bool = True, name: str | None = None) -> Envelope:
+def rib(
+    adapter: FusionAdapter,
+    sketch: str,
+    thickness: str,
+    side: str = "symmetric",
+    extend_profile: bool = True,
+    name: str | None = None,
+) -> Envelope:
     # RibFeatures is a read-only collection in the current Fusion API
     # (2704.1.23): it has item/itemByName/count but no createInput or add, so
     # ribs cannot be created via script at all (verified live 2026-07-18).
@@ -1362,8 +1423,19 @@ def add_hole(
     name: str | None = None,
 ) -> Envelope:
     try:
-        script = build_add_hole(body, position_mm, diameter, kind, cbore_diameter, cbore_depth,
-                                  csink_diameter, csink_angle, extent_kind, depth_expression, name)
+        script = build_add_hole(
+            body,
+            position_mm,
+            diameter,
+            kind,
+            cbore_diameter,
+            cbore_depth,
+            csink_diameter,
+            csink_angle,
+            extent_kind,
+            depth_expression,
+            name,
+        )
     except ValueError as e:
         return Envelope(ok=False, error="invalid_input", message=str(e))
     return _ok_runner(adapter, script, "add_hole")
@@ -1375,6 +1447,7 @@ add_hole_simple = add_hole
 
 
 # ---------- rebuild_feature ----------
+
 
 def build_rebuild_feature(feature_name: str, component_name: str | None = None) -> str:
     """Rebuild a feature whose downstream references are stale (G10) by

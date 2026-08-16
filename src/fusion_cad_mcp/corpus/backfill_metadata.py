@@ -44,7 +44,10 @@ def main(corpus_path: Path | None = None) -> None:
     preview_count = 0
     introduced_count = 0
 
-    with corpus_path.open("r", encoding="utf-8") as src, tmp_path.open("w", encoding="utf-8") as dst:
+    with (
+        corpus_path.open("r", encoding="utf-8") as src,
+        tmp_path.open("w", encoding="utf-8") as dst,
+    ):
         for line in src:
             if not line.strip():
                 continue

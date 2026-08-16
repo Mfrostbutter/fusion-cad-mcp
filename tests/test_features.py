@@ -12,11 +12,12 @@ from fusion_cad_mcp.tools import features as f
 
 # ---------- extrude ----------
 
+
 def test_build_extrude_distance_emits_setDistanceExtent():
     src = f.build_extrude("outer", 0, "new_body", "distance", "thickness")
     ast.parse(src)
     assert "setDistanceExtent(False" in src
-    assert "createByString(\"thickness\")" in src
+    assert 'createByString("thickness")' in src
     assert "NewBodyFeatureOperation" in src
 
 
@@ -29,7 +30,7 @@ def test_build_extrude_distance_negative_direction():
 def test_build_extrude_symmetric_full_length():
     src = f.build_extrude("outer", 0, "new_body", "symmetric", "10 mm", is_full_length=True)
     assert "setSymmetricExtent" in src
-    assert "createByString(\"10 mm\")" in src
+    assert 'createByString("10 mm")' in src
 
 
 def test_build_extrude_all_positive():
@@ -47,8 +48,8 @@ def test_build_extrude_participants_wires_find_body():
     src = f.build_extrude("outer", 0, "cut", "all_negative", participants=["plate", "rib"])
     ast.parse(src)
     assert "_find_body" in src  # helper present
-    assert "\"plate\"" in src
-    assert "\"rib\"" in src
+    assert '"plate"' in src
+    assert '"rib"' in src
     assert "participantBodies" in src
 
 
@@ -74,12 +75,13 @@ def test_build_extrude_invalid_direction():
 
 # ---------- fillet by geometry ----------
 
+
 def test_build_fillet_z_parallel_emits_correct_axis_check():
     src = f.build_fillet_edges_by_geometry("plate", "corner_r", parallel_to="z")
     ast.parse(src)
     # Z-parallel: x and y match, z differs
     assert "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6" in src
-    assert "createByString(\"corner_r\")" in src
+    assert 'createByString("corner_r")' in src
 
 
 def test_build_fillet_y_parallel():
@@ -111,6 +113,7 @@ def test_build_fillet_rejects_empty_radius():
 
 # ---------- chamfer by geometry ----------
 
+
 def test_build_chamfer_equal_kind():
     src = f.build_chamfer_edges_by_geometry("plate", "1 mm", kind="equal")
     ast.parse(src)
@@ -128,7 +131,7 @@ def test_build_chamfer_two_dist_requires_distance2():
 def test_build_chamfer_dist_angle_emits_correct_method():
     src = f.build_chamfer_edges_by_geometry("plate", "2 mm", kind="dist_angle", angle="45 deg")
     assert "chamferEdgeSets.addDistanceAndAngleChamferEdgeSet" in src
-    assert "createByString(\"45 deg\")" in src
+    assert 'createByString("45 deg")' in src
 
 
 def test_build_chamfer_rejects_unknown_kind():
@@ -137,6 +140,7 @@ def test_build_chamfer_rejects_unknown_kind():
 
 
 # ---------- mirror_feature ----------
+
 
 def test_build_mirror_xy_plane():
     src = f.build_mirror_feature("plate_extrude", "xy")
@@ -147,21 +151,23 @@ def test_build_mirror_xy_plane():
 def test_build_mirror_named_plane_uses_lookup():
     src = f.build_mirror_feature("plate_extrude", "mid_plane")
     assert "root.constructionPlanes.item" in src
-    assert "\"mid_plane\"" in src
+    assert '"mid_plane"' in src
 
 
 # ---------- pattern_rectangular ----------
+
 
 def test_build_pattern_rect_x_only_no_y():
     src = f.build_pattern_rectangular("rib", x_axis="x", x_count=5, x_distance="40 mm")
     ast.parse(src)
     assert "createByReal(5)" in src
-    assert "createByString(\"40 mm\")" in src
+    assert 'createByString("40 mm")' in src
 
 
 def test_build_pattern_rect_two_directions():
-    src = f.build_pattern_rectangular("rib", x_axis="x", x_count=3, x_distance="30 mm",
-                                       y_axis="y", y_count=2, y_distance="20 mm")
+    src = f.build_pattern_rectangular(
+        "rib", x_axis="x", x_count=3, x_distance="30 mm", y_axis="y", y_count=2, y_distance="20 mm"
+    )
     assert "setDirectionTwo" in src
 
 
@@ -177,12 +183,13 @@ def test_pattern_rect_rejects_count_zero():
 
 # ---------- pattern_circular ----------
 
+
 def test_build_pattern_circular_default_z_axis():
     src = f.build_pattern_circular("hole", axis="z", count=6, total_angle="360 deg")
     ast.parse(src)
     assert "root.zConstructionAxis" in src
     assert "createByReal(6)" in src
-    assert "createByString(\"360 deg\")" in src
+    assert 'createByString("360 deg")' in src
 
 
 def test_pattern_circular_rejects_count_less_than_2():
@@ -191,6 +198,7 @@ def test_pattern_circular_rejects_count_less_than_2():
 
 
 # ---------- combine ----------
+
 
 def test_build_combine_join():
     src = f.build_combine("plate", ["lip"], operation="join")
@@ -217,10 +225,12 @@ def test_combine_rejects_unknown_op():
 
 # ---------- run wrappers ----------
 
+
 class FakeAdapter:
     def __init__(self, message: str = '{"ok": true}'):
         self.scripts: list[str] = []
         self.message = message
+
     def execute_script(self, s: str) -> Envelope:
         self.scripts.append(s)
         return Envelope(ok=True, message=self.message)
@@ -235,8 +245,13 @@ def test_extrude_short_circuits_on_invalid_input():
 
 
 def test_extrude_passes_through_payload():
-    payload = {"ok": True, "feature_name": "Extrude1", "operation": "new_body",
-               "extent_kind": "distance", "bodies_added": ["Body1"]}
+    payload = {
+        "ok": True,
+        "feature_name": "Extrude1",
+        "operation": "new_body",
+        "extent_kind": "distance",
+        "bodies_added": ["Body1"],
+    }
     a = FakeAdapter(message=json.dumps(payload))
     env = f.extrude(a, "outer", 0, "new_body", "distance", "thickness")
     assert env.ok is True
@@ -253,9 +268,11 @@ def test_fillet_surfaces_no_edges_matched_error():
 
 # ---------- rebuild_feature ----------
 
+
 def test_build_rebuild_feature_parses():
     src = f.build_rebuild_feature("dispense_hole_cut")
     import ast
+
     ast.parse(src)
     assert 'FEATURE_NAME = "dispense_hole_cut"' in src
     assert "COMP_HINT = None" in src
@@ -368,6 +385,7 @@ def test_rebuild_surfaces_feature_not_found():
 
 # ---------- rebuild_feature review fixes (multi-profile, preflight) ----------
 
+
 def test_build_rebuild_always_emits_profile_areas_list():
     """Single-profile case must store profile_areas as a 1-element LIST,
     not a singular profile_area. Recreate iterates the list uniformly so
@@ -395,7 +413,7 @@ def test_build_rebuild_preflight_checks_profiles_exist():
     preflight, so deleteMe() ran and recreation then failed, destroying the
     feature. Preflight must check profiles.count before the delete."""
     src = f.build_rebuild_feature("x")
-    pre = src[src.index("def _preflight_check"):src.index("def _recreate_extrude")]
+    pre = src[src.index("def _preflight_check") : src.index("def _recreate_extrude")]
     assert "sketch_has_no_profiles" in pre
     assert "profiles.count == 0" in pre
 
@@ -477,6 +495,7 @@ def test_rebuild_succeeds_for_multi_profile_extrude():
 
 
 # ---------- rebuild_feature duplicate-sketch-name resolution ----------
+
 
 def test_build_rebuild_captures_sketch_owner_component():
     """Capture must record the parent component of the sketch so recreate can

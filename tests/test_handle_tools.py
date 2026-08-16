@@ -1,4 +1,5 @@
 """Handle-consuming tool generators + run wrappers."""
+
 import ast
 
 import pytest
@@ -7,6 +8,7 @@ from fusion_cad_mcp.envelope import Envelope
 from fusion_cad_mcp.tools import handle_tools as ht
 
 # ---------- list_body_entities ----------
+
 
 def test_list_body_entities_all_kinds():
     src = ht.build_list_body_entities("plate")
@@ -25,7 +27,9 @@ def test_list_body_entities_face_normal_filter():
 
 def test_list_body_entities_edge_parallel_z_filter():
     src = ht.build_list_body_entities("plate", kinds=["edge"], edge_parallel_to="z")
-    assert "abs(sp.x - ep_.x) < 1e-6 and abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) > 1e-6" in src
+    assert (
+        "abs(sp.x - ep_.x) < 1e-6 and abs(sp.y - ep_.y) < 1e-6 and abs(sp.z - ep_.z) > 1e-6" in src
+    )
 
 
 def test_list_body_entities_min_edge_length_converts_mm_to_cm():
@@ -40,6 +44,7 @@ def test_list_body_entities_rejects_unknown_kind():
 
 
 # ---------- measure ----------
+
 
 def test_build_measure_distance():
     src = ht.build_measure("face:body/face[0]:tA", "face:body/face[1]:tB", kind="distance")
@@ -63,9 +68,11 @@ def test_build_measure_rejects_unknown_kind():
 def test_measure_short_circuits_on_bad_handle():
     class A:
         scripts: list = []
+
         def execute_script(self, s):
             self.scripts.append(s)
             return Envelope(ok=True)
+
     a = A()
     env = ht.measure(a, "garbage", "face:b:t2")
     assert env.ok is False
@@ -74,6 +81,7 @@ def test_measure_short_circuits_on_bad_handle():
 
 
 # ---------- find_mesh_using_ray ----------
+
 
 def test_build_find_mesh_using_ray_default_root():
     src = ht.build_find_mesh_using_ray(None, [0, 0, 50], [0, 0, -1])
@@ -93,9 +101,11 @@ def test_build_find_mesh_using_ray_with_component():
 def test_find_mesh_using_ray_rejects_bad_origin():
     class A:
         scripts: list = []
+
         def execute_script(self, s):
             self.scripts.append(s)
             return Envelope(ok=True)
+
     a = A()
     env = ht.find_mesh_using_ray(a, [0, 0], [0, 0, -1])
     assert env.ok is False
@@ -103,6 +113,7 @@ def test_find_mesh_using_ray_rejects_bad_origin():
 
 
 # ---------- ray_collision_with_mesh ----------
+
 
 def test_build_ray_collision_with_mesh_uses_calculateCollisionsWithRay():
     src = ht.build_ray_collision_with_mesh("body:mesh:tok", [0, 0, 50], [0, 0, -1])
@@ -113,15 +124,18 @@ def test_build_ray_collision_with_mesh_uses_calculateCollisionsWithRay():
 def test_ray_collision_rejects_bad_handle():
     class A:
         scripts: list = []
+
         def execute_script(self, s):
             self.scripts.append(s)
             return Envelope(ok=True)
+
     a = A()
-    env = ht.ray_collision_with_mesh(a, "not-a-handle", [0,0,0], [0,0,-1])
+    env = ht.ray_collision_with_mesh(a, "not-a-handle", [0, 0, 0], [0, 0, -1])
     assert env.ok is False
 
 
 # ---------- fillet_edges (UI sel) ----------
+
 
 def test_build_fillet_edges_resolves_each_handle():
     src = ht.build_fillet_edges(
@@ -136,15 +150,18 @@ def test_build_fillet_edges_resolves_each_handle():
 def test_fillet_edges_rejects_empty_list():
     class A:
         scripts: list = []
+
         def execute_script(self, s):
             self.scripts.append(s)
             return Envelope(ok=True)
+
     a = A()
     env = ht.fillet_edges(a, [], "5 mm")
     assert env.ok is False
 
 
 # ---------- chamfer_edges ----------
+
 
 def test_build_chamfer_edges_equal():
     src = ht.build_chamfer_edges(["edge:b/edge[0]:t"], "1 mm", kind="equal")
@@ -160,6 +177,7 @@ def test_chamfer_two_dist_requires_distance2():
 
 
 # ---------- project_to_sketch ----------
+
 
 def test_build_project_to_sketch_resolves_entities():
     src = ht.build_project_to_sketch("outline", ["edge:b/edge[0]:t1", "edge:b/edge[1]:t2"])

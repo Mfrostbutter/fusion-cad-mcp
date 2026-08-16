@@ -78,7 +78,9 @@ def test_set_view_invalid_direction_short_circuits():
 def test_set_view_parses_stdout_response():
     class A:
         def execute_script(self, s: str):
-            return Envelope(ok=True, message=json.dumps({"ok": True, "direction": "top", "fit": True}))
+            return Envelope(
+                ok=True, message=json.dumps({"ok": True, "direction": "top", "fit": True})
+            )
 
     env = viz.set_view(A(), direction="top")
     assert env.ok is True
@@ -87,13 +89,20 @@ def test_set_view_parses_stdout_response():
 
 # ---------- screenshot_compare_with_marker ----------
 
+
 class _CompareAdapter:
     """Records the call sequence and serves canned responses for the
     4 calls compare_with_marker makes: get-marker, set-marker, screenshot,
     set-marker, screenshot."""
 
-    def __init__(self, current_pos: int, count: int, before_png: str, after_png: str,
-                 fail_at: str | None = None):
+    def __init__(
+        self,
+        current_pos: int,
+        count: int,
+        before_png: str,
+        after_png: str,
+        fail_at: str | None = None,
+    ):
         self.calls: list[str] = []
         self._current_pos = current_pos
         self._count = count
@@ -162,8 +171,11 @@ def test_compare_returns_both_images_and_marker_positions():
     assert env.result["after_image"]["data"] == "AFTER_PNG"
     # Verify call sequence: get -> set(before) -> shot -> set(after) -> shot
     assert a.calls == [
-        "get_marker", "set_marker_1", "screenshot_1",
-        "set_marker_2", "screenshot_2",
+        "get_marker",
+        "set_marker_1",
+        "screenshot_1",
+        "set_marker_2",
+        "screenshot_2",
     ]
 
 
