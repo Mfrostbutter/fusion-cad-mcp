@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Fixed: `doc_state` failed outright on a direct (non-parametric) design
+
+Reported in [#5](https://github.com/Mfrostbutter/fusion-cad-mcp/issues/5). The
+generated script read `design.userParameters.count` unconditionally. On a
+direct design that raises `RuntimeError: 3 : this is not a parametric design`,
+so the whole tool errored out and reported nothing — even though bodies,
+sketches, features, components, units, workspace and dirty flag were all
+readable. For an agent, the first orienting call against a direct design just
+failed.
+
+`doc_state` now reports the mode up front (`design_type`: `"parametric"` or
+`"direct"`, plus a boolean `is_parametric`) and reads the parametric-only
+fields through a guard that absorbs *only* the "not a parametric design"
+`RuntimeError`. Those fields — `parameters_count` and the new `timeline_count`
+— come back `null` on a direct design and are listed in a new `unavailable` map
+explaining why. Any other error still propagates, so a real failure is never
+disguised as a missing field.
+
+The guard is deliberately narrow: on a live direct design the original script
+evaluated `root.features.count` successfully and only failed at
+`design.userParameters`, so `features_count` is not parametric-only and stays
+populated in both modes.
+
 ## 0.2.2
 
 ### Fixed: a clean install pulled `mcp` 2.x and could not start
