@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Added: the Claude skill ships from this repo
+
+`SKILL.md` and `install_skill.py` now live here, next to the knowledge markdown
+they reference. The skill and the server were maintained as separate copies
+before, which meant a gotcha learned in one could sit unwritten in the other.
+`install_skill.py --overlay` covers the private-variant case that the fork was
+serving.
+
+### Changed: the knowledge base is the full working set
+
+`gotchas.md` and `patterns.md` shipped as a trimmed subset. They are now level
+with the working copy: 40 more failure modes and 18 more patterns, so
+`find_gotcha` searches 112 sections rather than 72.
+
+### Changed: comments say what the code does, not how it was found
+
+Inline comments across the tool modules carried investigation narrative, dated
+verification notes and Fusion build numbers. The facts stay as terse gotcha
+flags; the history belongs here.
+
+
 ### Fixed: `doc_state` failed outright on a direct (non-parametric) design
 
 Reported in [#5](https://github.com/Mfrostbutter/fusion-cad-mcp/issues/5). The

@@ -1,0 +1,11 @@
+# Normalize to LF in the repo and on checkout. The explicit pins matter:
+# text=auto skips any file above ~0.8% non-ASCII bytes as binary.
+* text=auto eol=lf
+
+*.md   text eol=lf
+*.txt  text eol=lf
+*.json text eol=lf
+*.py   text eol=lf
+*.toml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

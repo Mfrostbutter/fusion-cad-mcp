@@ -108,11 +108,29 @@ fusion-cad-mcp corpus build --i-accept-autodesk-terms
 
 That crawls at 1 request/second into `~/.fusion-cad/corpus/`, which is where the server looks first. Set `FUSION_CAD_CORPUS_DIR` to keep it elsewhere. Everything else works without it.
 
+## The Claude skill
+
+`SKILL.md` in this repo is the agent-facing companion to the server: which tool
+to reach for, the six rules that prevent most failures, and how to fall back to
+raw scripts. It reads alongside the same `tools.md`, `patterns.md` and
+`gotchas.md` the knowledge tools search, so there is one copy of each.
+
+Install it into a Claude skills directory:
+
+```bash
+python install_skill.py
+```
+
+That writes `~/.claude/skills/fusion-cad/`. Use `--skills-dir` for another
+location, `--name` for another folder name, and `--overlay DIR` to copy your own
+markdown over the base, which is how a private variant adds house conventions
+without forking the skill.
+
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-pytest              # 467 tests, no Fusion required
+pytest              # 474 tests, no Fusion required
 ```
 
 The tests cover script generation, envelope parsing, argument validation, and packaging integrity. They deliberately do not need Fusion running, which is also their limit: **passing tests prove the generated Python is valid, not that Fusion accepts it.** Several of the bugs found in this project passed every unit test and only surfaced against a live document, so verify behavioral changes in Fusion and check entity counts rather than trusting a success envelope.
