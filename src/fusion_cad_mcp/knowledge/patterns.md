@@ -22,12 +22,12 @@ Internal units are cm. `ValueInput.createByString('30 mm')` accepts unit suffixe
 4. Multi-profile cut (n cells in one feature)
 5. Cut through unknown depth
 6. Symmetric extrude (centered on sketch plane)
-7. Tapered extrude (legacy countersink approach)
-8. Holes via HoleFeatureInput (preferred)
+7. Tapered extrude (cone, legacy countersink approach)
+8. Holes via HoleFeatureInput (preferred over sketch+cut)
 9. Fillet by current UI selection
 10. Edit existing fillet radius (no rebuild needed)
 11. Read parameter values for sketch math
-12. Bounding box sanity check
+12. Bounding box sanity check (always after extrudes)
 13. Clean rebuild without losing parameters
 14. Export to STL / 3MF / STEP
 15. API documentation lookup (before guessing signatures)
@@ -75,6 +75,24 @@ Internal units are cm. `ValueInput.createByString('30 mm')` accepts unit suffixe
 55. Trace a silhouette from a screenshot (pixel table to mm)
 56. Variant matrix from one design: name the axes into the filename
 57. Fit artwork to a print: measure the gaps, not the strokes
+58. Leaning cut groove (flute) via a perpendicular construction plane
+59. Pattern on Path (when the seed really is perpendicular to the path)
+60. Restore-by-join: terminate a field of cuts on a clean boundary
+61. Framed fluted panel (plinth, top ring, corner posts, mating pads)
+62. Vertical dovetail interlock between stacked or abutting modules
+63. Sheared prism via loft (a leaning body with a flat base)
+64. Through-cut lattice: one seed cuts two opposite walls
+65. Rectangular pattern direction: retry by volume, never by reasoning
+66. Verify a slip fit by measurement, not by interference
+67. Design variants as suppressible cut blocks in ONE document
+68. Verify an opening count by face arithmetic, not by looking
+69. Analytic cell decomposition, handed to Fusion as three-point arcs
+70. Jittered polygon seed: a constrained N-gon Fusion will actually accept
+71. Generated silhouette: draw offline, gate offline, hand Fusion finished loops
+72. Classify arrangement profiles by a guaranteed interior point
+73. Rebuild one mid-timeline feature in place, not appended
+74. Self-supporting ramp as a loft between two XY-plane profiles
+75. Nozzle-relative printability gates for flat-plate art
 
 ## 1. Idempotent user-parameter add
 
@@ -86,7 +104,7 @@ param_defs = [
     ('width',  '148 mm', 'mm', ''),
     ('height', '38 mm',  'mm', ''),
     ('wall',   '3 mm',   'mm', ''),
-    ('floor',  '3 mm',   'mm', ''),
+    ('floor_t', '3 mm',  'mm', ''),      # NOT 'floor' -- reserved, see below
     ('total_height',
      'base_height + air_gap + 2 * floor_thickness',
      'mm', 'COMPUTED'),
@@ -99,6 +117,12 @@ for name, expr, unit, comment in param_defs:
 ```
 
 Expressions can reference other params directly.
+
+**Reserved names.** `userParameters.add` rejects any name that collides with a built-in expression
+function, raising `RuntimeError: 3 : param name is not valid`. `floor` is the one that bites in
+practice, because it is the natural name for a tray's floor thickness. Avoid: `floor`, `ceil`,
+`abs`, `min`, `max`, `mod`, `round`, `sign`, `sqrt`, `pi`, `e`, and the trig names. Suffix instead:
+`floor_t`, `min_gap`. Verified 2026-07-31: `floor` REJECTED, `floor_t` / `wall` / `corner_r` accepted.
 
 ## 2. Parametric box from a sketched rectangle
 
@@ -1235,7 +1259,7 @@ Convention: name the construction lines (e.g. `width_top`, `width_mid`, `width_b
 
 ## 47. Loft with guide rails via Intersect + Projection Link
 
-UNPROVEN by us. Source: PDO Day 4 glass-bottle Loft tutorial. The single most useful Loft technique in the corpus.
+UNPROVEN by us. Source: a third-party glass-bottle Loft tutorial. The single most useful Loft technique in the corpus.
 
 Pattern: when a Loft uses guide rails, the rails MUST touch every profile or Fusion raises "the guide rail isn't touching all sketch profiles." The reliable way to guarantee this is to sketch the rails on a plane that bisects the profiles (the XZ origin plane for centered profiles), then use the Intersect command (Sketch tab > Create > Project/Include > Intersect) with **Projection Link checked** to snap rail points onto the live profile edges. The intersected geometry appears in purple and updates parametrically if any source profile changes size.
 
@@ -1280,7 +1304,7 @@ The geometric-continuity test was added as a follow-up Underspecified entry in t
 
 ## 48. Chamfer a circular edge via Revolve-Cut (workaround)
 
-UNPROVEN by us. Source: PDO Day 6 hex-nut tutorial. Speaker says verbatim *"Chamfer does not currently work in a circular manner"* — this is a documented Fusion limitation as of 2023 video date, and the Revolve-Cut workaround is the accepted alternative.
+UNPROVEN by us. Source: a third-party hex-nut tutorial. Speaker says verbatim *"Chamfer does not currently work in a circular manner"* — this is a documented Fusion limitation as of 2023 video date, and the Revolve-Cut workaround is the accepted alternative.
 
 The Chamfer feature in Fusion is designed for STRAIGHT-EDGE chamfers (rectangular box edges, polygon corners). When the target edge is circular (e.g., the OD of a cylinder, the chamfer ring on a hex nut where the top face transitions to the side faces), the Chamfer feature either refuses or produces wrong geometry. Substitute a Revolve-Cut driven by a small triangle profile:
 
@@ -1318,7 +1342,7 @@ Open question whether Fusion has fixed the Chamfer-on-circular-edges limitation 
 
 ## 49. Modeled threads on Hole + Thread Offset for chamfer collision
 
-UNPROVEN by us. Source: PDO Day 6 hex-nut tutorial.
+UNPROVEN by us. Source: a third-party hex-nut tutorial.
 
 Two distinct lessons in one Hole-feature workflow:
 
@@ -1357,7 +1381,7 @@ Practical note: Fusion's parametric edit-back makes this a one-shot followup. Mo
 
 ## 50. Fillet-before-Shell ordering rule
 
-Codified from PDO Day 2 (glass bottle) and PDO Day 4 (glass bottle Loft). Both videos call this out independently as a critical ordering rule.
+Codified from two third-party glass-bottle tutorials. Both call this out independently as a critical ordering rule.
 
 Rule: when a body will be Shelled, apply any Modeling Fillets to the OUTSIDE of the body BEFORE running the Shell command. Shell traces the existing contour to compute the inner wall offset, so a fillet that exists at Shell-time produces a smooth uniform-thickness wall around the rounded edge. A fillet applied AFTER Shell does not propagate to the inner surface — the inner surface stays sharp where the outer is rounded, the wall thickness becomes non-uniform near the fillet, and in pathological cases Shell silently fails.
 
@@ -1721,3 +1745,722 @@ Render an original / eroded / difference triptych and look at it. Numbers cannot
 ### Getting permission first
 
 Eroding is **modifying someone's mark**. That is a design decision with a legal edge, not a technical one. Ask before doing it, and record who said yes. A licence to *use* a mark is not a licence to *redraw* it, and the person who owns it may care about 0.17mm more than you would guess.
+
+## 58. Leaning cut groove (flute) via a perpendicular construction plane
+
+A decorative flute that leans off vertical. Build it as a CUT, never as a joined proud rib: a joined
+leaning cylinder overhangs the body top and bottom and needs trimming, whereas a cut is bounded by
+the body for free.
+
+Geometry: a cylinder of radius `rib_r` whose axis sits `rib_axis_off` OUTSIDE the face, so it bites
+`rib_depth = rib_r - rib_axis_off` into the wall. Groove width at the surface is
+`2 * sqrt(rib_r^2 - rib_axis_off^2)`.
+
+```python
+# rib_r 2.5, rib_depth 1.2 -> axis 1.3 outboard, groove 4.27 wide, 1.73 land at 6 pitch
+params.add('rib_axis_off', VI('rib_r - rib_depth'), 'mm', 'COMPUTED')
+
+# 1. plane offset outboard of the face (XZ shown; use yZ for an X-normal face)
+pi = comp.constructionPlanes.createInput()
+pi.setByOffset(comp.xZConstructionPlane, VI('face_y - rib_axis_off'))
+plane = comp.constructionPlanes.add(pi)
+
+# 2. the axis line. XZ mapping: sketch X = world X, sketch Y = -world Z.
+#    Constrain the endpoint with TWO component distances, never an angular dim (see gotchas).
+sk = comp.sketches.add(plane)
+F = sk.sketchCurves.sketchLines.addByTwoPoints(P(x0, -z0, 0), P(x1, -z1, 0))
+sk.geometricConstraints.addCoincident(F.startSketchPoint, sk.project(comp.zConstructionAxis).item(0))
+sd = sk.sketchDimensions
+sd.addDistanceDimension(sk.originPoint, F.startSketchPoint,
+    DO.VerticalDimensionOrientation, t).parameter.expression = 'rib_z0'
+sd.addDistanceDimension(F.startSketchPoint, F.endSketchPoint,
+    DO.HorizontalDimensionOrientation, t).parameter.expression = 'rib_len * sin(rib_lean)'
+sd.addDistanceDimension(F.startSketchPoint, F.endSketchPoint,
+    DO.VerticalDimensionOrientation, t).parameter.expression = 'rib_len * cos(rib_lean)'
+assert sk.isFullyConstrained
+ws, we = F.worldGeometry.startPoint, F.worldGeometry.endPoint
+assert we.z > ws.z, 'axis points downward'          # direction, not just constraint state
+
+# 3. plane PERPENDICULAR to the axis at its start. Its origin lands exactly on the
+#    line start and its normal follows the tangent, so a circle constrained to the
+#    sketch origin is automatically centred on the axis.
+pi2 = comp.constructionPlanes.createInput()
+pi2.setByDistanceOnPath(F, adsk.core.ValueInput.createByReal(0.0))
+npl = comp.constructionPlanes.add(pi2)
+
+sk2 = comp.sketches.add(npl)
+c = sk2.sketchCurves.sketchCircles.addByCenterRadius(P(0, 0, 0), 0.25)
+sk2.geometricConstraints.addCoincident(c.centerSketchPoint, sk2.originPoint)
+sk2.sketchDimensions.addDiameterDimension(c, t).parameter.expression = 'rib_r * 2'
+
+# 4. one-sided cut along the axis; positive extent runs along the line direction
+ci = ext.createInput(sk2.profiles.item(0), adsk.fusion.FeatureOperations.CutFeatureOperation)
+ci.setDistanceExtent(False, VI('rib_len'))
+ci.participantBodies = [body]
+seed = ext.add(ci)
+```
+
+Then replicate with a **rectangular** pattern along the face, one set per planar face. Do NOT use
+Pattern on Path with Path Direction: it discards the lean (see gotchas). Print angle 20 degrees from
+vertical is 70 from horizontal, so flutes are self-supporting.
+
+Verify the lean survived by querying the cut faces, not by looking at a screenshot:
+
+```python
+leans = [math.degrees(math.acos(abs(f.geometry.axis.z))) for f in body.faces
+         if isinstance(f.geometry, adsk.core.Cylinder) and f.geometry.radius < 0.3]
+print(min(leans), max(leans))      # must both equal rib_lean
+```
+
+## 59. Pattern on Path (when the seed really is perpendicular to the path)
+
+Correct use: teeth on a belt, links on a chain, anything whose orientation SHOULD be derived from
+the path. The path must be a proxy, and prefer a sketch curve over a body edge because any cut you
+make along an edge fragments it.
+
+```python
+path = adsk.fusion.Path.create(
+    line.createForAssemblyContext(occurrence),                 # proxy is mandatory
+    adsk.fusion.ChainedCurveOptions.connectedChainedCurves)    # chains a closed loop
+
+pp = comp.features.pathPatternFeatures
+pin = pp.createInput(ents, path,
+                     VI('floor(perimeter / pitch)'),           # quantity, parametric
+                     VI('pitch'),
+                     adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
+pin.isOrientationAlongPath = True                              # UI "Path Direction"
+pin.patternComputeOption = adsk.fusion.PatternComputeOptions.IdenticalPatternCompute
+pp.add(pin).name = 'teeth'
+```
+
+`IdenticalPatternCompute` avoids the "too many pattern instances" warning that `Adjust` throws.
+
+Drive quantity from an expression rather than the tutorial's measure-the-loop-and-paste-the-number
+ritual: `'floor((2 * outer_w + 2 * depth) / pitch)'` keeps the pattern correct when the profile
+changes. Instances that fall past the end of the path continue in a straight line from the endpoint
+and simply cut nothing, so over-provisioning quantity is safe.
+
+## 60. Restore-by-join: terminate a field of cuts on a clean boundary
+
+See the gotchas entry for the full reasoning. The shape of the move:
+
+```python
+# 1. overrun: start each cut past the boundary so its angled end cap is buried
+params.add('rib_z0', VI('plinth_h - rib_r'), 'mm', 'COMPUTED')
+
+# 2. restore: join back the region that should have stayed solid, AFTER the cuts
+ei = ext.createInput(outer_sketch.profiles.item(0),
+                     adsk.fusion.FeatureOperations.JoinFeatureOperation)
+ei.setDistanceExtent(False, VI('plinth_h'))
+ei.participantBodies = [body]
+ext.add(ei).name = 'plinth_band'
+```
+
+Reusing the body's own outer sketch profile keeps the restore exactly flush with the silhouette and
+costs no new sketch.
+
+## 61. Framed fluted panel (plinth, top ring, corner posts, mating pads)
+
+A fluted field needs a frame, or it reads as damage: flutes sawtooth against the base, collide with
+each other at corners, serrate the top rim, and stop parts seating flat against each other. Four
+applications of section 60, all after the flute cuts:
+
+| Boundary | Shape | Note |
+|---|---|---|
+| Bottom | outer profile, Z 0..`plinth_h` | also the natural home for tongue/groove keying |
+| Top rim | **RING**: outer profile offset inward by ~2 mm, Z `h - top_band`..`h` | a solid block seals every cavity |
+| Vertical corners | wall-thick square at one corner, patterned 2x2, full height | width capped by the nearest cavity; `wall` is always safe |
+| Contact faces | pad on that face only, spanning the CONTACT height | modules differ in height, so only part of a face touches |
+
+Ring profile selection:
+
+```python
+curves = adsk.core.ObjectCollection.create()
+for l in outer_lines: curves.add(l)
+sk.offset(curves, P(cx, cy, 0), 0.2)            # inward; creates a live offset constraint
+profs = [(sk.profiles.item(i), sk.profiles.item(i).areaProperties().area)
+         for i in range(sk.profiles.count)]
+ring = min(profs, key=lambda t: t[1])[0]        # ring is the smaller of the two
+```
+
+Corner posts, seeded once and patterned to all four corners:
+
+```python
+ri = rp.createInput(ents, comp.xConstructionAxis, VI('2'), VI('outer_w - corner_band'), SPACING)
+ri.setDirectionTwo(comp.yConstructionAxis, VI('2'), VI('depth - corner_band'))
+```
+
+Verify the frame by querying the flute Z range per body; it must equal
+`plinth_h .. module_height - top_band` exactly.
+
+**Accept one limit.** The flute adjacent to each corner post feathers to a point. A groove leaning
+`a` degrees sweeps `h * tan(a)` horizontally over height `h`, so no vertical line ever sits between
+flutes at every height. The sliver is thin enough that the slicer drops it.
+
+## 62. Vertical dovetail interlock between stacked or abutting modules
+
+The general problem: two parts meet on a flat vertical face and must not slide apart in use. Work
+out which axes are ALREADY blocked before designing anything; usually only one is free, and that
+determines the whole mechanism.
+
+A plain rail in a blind groove blocks X (the groove is closed at both ends) and Z (the groove roof),
+and leaves Y, the pull-apart direction, completely free. Resisting pull-apart needs an undercut, and
+an undercut cannot be assembled by pushing along the axis it blocks, so it forces a sliding
+assembly direction. A blind rail forbids sliding. The rail is therefore not fixable in place; the
+assembly direction has to change.
+
+**Run the dovetail vertically, never horizontally.** A dovetail is a prism. Extruded along Z, its
+cross-section is constant in the horizontal plane, so every flank is a vertical wall and nothing
+overhangs. The same dovetail run horizontally along a vertical face has a near-horizontal underside,
+the worst possible FDM overhang. Printability picks the axis.
+
+**Put the male on the TALLER part and the socket in the SHORTER one.** The socket has to run out
+through the top of its part so the mating part can drop on. Cut it into the taller part and that
+open slot is exposed above the joint. Cut it into the shorter part and the taller neighbour covers
+it completely. This is what makes a dovetail viable between parts of unequal height, which is
+usually why it gets wrongly rejected.
+
+```python
+# depth is bounded by the wall behind the socket -- check this FIRST
+assert wall_solid - (dt_depth + dt_clear) > 1.2, 'socket leaves too little wall'
+
+params.add('dt_depth',   VI('1.6 mm'), 'mm', 'engagement depth')
+params.add('dt_w_root',  VI('12 mm'),  'mm', 'width at the mating face')
+params.add('dt_angle',   VI('45 deg'), 'deg', 'flank angle from the pull axis')
+params.add('dt_w_tip',   VI('dt_w_root + 2 * dt_depth * tan(dt_angle)'), 'mm', 'COMPUTED')
+# socket: true parallel offset, so clearance is dt_clear NORMAL to every face
+params.add('dt_sock_d',      VI('dt_depth + dt_clear'), 'mm', 'COMPUTED')
+params.add('dt_sock_w_root', VI('dt_w_root + 2 * dt_clear / cos(dt_angle)'), 'mm', 'COMPUTED')
+params.add('dt_sock_w_tip',  VI('dt_sock_w_root + 2 * dt_sock_d * tan(dt_angle)'), 'mm', 'COMPUTED')
+# mouth overrun keeps the cut off the body boundary; extend along the same flank lines
+params.add('dt_mouth_w', VI('dt_sock_w_root - 2 * dt_over * tan(dt_angle)'), 'mm', 'COMPUTED')
+```
+
+Sketch the trapezoid on the **XY plane** and extrude along Z. Narrow at the mating face, wide at the
+tip. Jitter the two flat edges so Fusion does not auto-infer horizontal (see gotchas), constrain
+them explicitly, then dimension the remaining 6 DOF.
+
+```python
+pts = [(cx - w_root/2, y_f), (cx + w_root/2, y_f + J),
+       (cx + w_tip/2,  y_f - d), (cx - w_tip/2,  y_f - d + J)]
+```
+
+| Feature | Operation | Extent |
+|---|---|---|
+| male, on the taller part | Join | `setDistanceExtent(False, '<shorter_part_height>')` |
+| socket, in the shorter part | Cut | `setDistanceExtent(False, '<its_height> + 5 mm')`, through the top |
+
+Mirror the seed about the YZ plane for the second dovetail; two per joint blocks rotation about Z.
+
+Lead-in chamfer on the male top, sized so the chamfered top is narrower than the socket mouth, makes
+the drop-on self-aligning. Select its edges by world coordinates, not by face, because the male's
+top face may merge with coplanar neighbours (see gotchas).
+
+Verify: `body.volume` delta against `2 * ((w_root + w_tip) / 2) * depth * height` for the male and
+the socket equivalent, then an interference check across every body. Zero pairs plus a bounding box
+that reaches into the neighbour's territory proves capture.
+
+**What this locks.** X and Y fully; down-Z is whatever the parts sit on; up-Z is the intended
+removal direction. That is a complete lock for anything resting on a surface. Add a detent only if a
+fit-check print feels loose, and only if some member can actually flex the detent height; a 1.6 mm
+wall over a 16 mm span reads as a hard push, not a click.
+
+## 63. Sheared prism via loft (a leaning body with a flat base)
+
+Fusion refuses shear transforms (see gotchas), so build the shear geometrically. Both profiles are
+identical; only the upper one's anchor carries the lateral offset. The result has horizontal top and
+bottom faces, a full flat footprint, and no wedge.
+
+```python
+LEAN = math.radians(15.0)
+lean_off = 103.0 * math.tan(LEAN)
+
+ci = root.constructionPlanes.createInput()
+ci.setByOffset(root.xYConstructionPlane, VI('shell_h'))
+pl_top = root.constructionPlanes.add(ci)
+pl_top.name = 'top_plane'
+
+# both rectangles are outer_w x outer_d; the top one is anchored at lean_off + outer_d/2
+sk_bot = rect_sketch('body_bot', root.xYConstructionPlane, 'outer_w + 0 mm', 'outer_d + 0 mm',
+                     0.0, 0.0, 'outer_w / 2', 'outer_d / 2')
+sk_top = rect_sketch('body_top', pl_top, 'outer_w + 0 mm', 'outer_d + 0 mm',
+                     0.0, lean_off, 'outer_w / 2', 'lean_off + outer_d / 2')
+
+lofts = root.features.loftFeatures
+li = lofts.createInput(adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+li.loftSections.add(sk_bot.profiles.item(0))
+li.loftSections.add(sk_top.profiles.item(0))
+li.isSolid = True
+body = lofts.add(li).bodies.item(0)
+
+# Cavalieri: a shear preserves volume. Free check that the loft did what you meant.
+assert abs(body.volume - 130.0 * 90.0 * 103.0 / 1000.0) < 0.01
+```
+
+Fillet the LEANING corner edges by matching direction against the lean vector, since they are no
+longer parallel to Z:
+
+```python
+u = adsk.core.Vector3D.create(0.0, math.sin(LEAN), math.cos(LEAN))
+edges = adsk.core.ObjectCollection.create()
+for e in body.edges:
+    g = e.geometry
+    if not isinstance(g, adsk.core.Line3D):
+        continue
+    s, t = g.startPoint, g.endPoint
+    d = adsk.core.Vector3D.create(t.x - s.x, t.y - s.y, t.z - s.z)
+    if d.length < 1e-9:
+        continue
+    d.normalize()
+    if abs(abs(d.dotProduct(u)) - 1.0) < 1e-6:
+        edges.add(e)
+assert edges.count == 4
+```
+
+Volume removed by four corner fillets: `4 * r^2 * (1 - pi/4) * (height / cos(lean))`.
+
+Hollow it with a Shell feature removing the two HORIZONTAL faces. That offsets perpendicular to
+every face, which is what a leaning wall needs, and derives the inner corner radii for free.
+Expected wall volume by horizontal slices, noting the `1/cos` terms:
+
+```python
+c = math.cos(LEAN)
+outer_a = W * D - 4 * (R * R / c) * (1 - math.pi / 4)
+inner_a = (W - 2*t) * (D - 2*t/c) - 4 * ((R - t) ** 2 / c) * (1 - math.pi / 4)
+assert abs(body.volume - (outer_a - inner_a) * H / 1000.0) < 0.05
+```
+
+## 64. Through-cut lattice: one seed cuts two opposite walls
+
+A seed sketched on XZ at y=0 and cut with a symmetric through-extent removes material from the FRONT
+and REAR walls in one feature. Same on YZ for left and right. Four sketches, four cuts and four
+patterns produce a 170-opening lattice, and opposite faces are perfectly phase-aligned because they
+are literally the same feature.
+
+```python
+ei = exts.createInput(sk.profiles.item(0), adsk.fusion.FeatureOperations.CutFeatureOperation)
+ei.setSymmetricExtent(VI('outer_d * 3 + 40 mm'), True)    # over-provisioned: no direction to fumble
+ei.participantBodies = [body]
+cut = exts.add(ei)
+
+per_wall = hex_area * wall            # vertical wall
+per_wall = hex_area * wall / math.cos(LEAN)   # leaning wall: the Y prism traverses more material
+assert abs(removed - 2 * per_wall) < 1.0, 'seed did not cross exactly two walls'
+```
+
+Preconditions to check from the field maths BEFORE building: the field must stay inside the flat
+face region on BOTH walls, and the cut must not clip the adjacent walls.
+
+Honeycomb field maths, for opening circumradius `r` and member `m`:
+
+```
+across_flats = sqrt(3) * r      col_pitch = sqrt(3) * r + m
+across_points = 2 * r           row_pitch = 1.5 * r + (sqrt(3)/2) * m
+N    = floor((flat_width - across_flats) / col_pitch) + 1
+land = (flat_width - ((N - 1) * col_pitch + across_flats)) / 2
+```
+
+Express `N` in Fusion with `floor()`, which works in expressions, so the counts stay parametric.
+Do NOT simplify to `floor(flat_width / col_pitch)`: it agrees at some widths and silently returns one
+column too many at others, putting a clipped sliver against the corner.
+
+## 65. Rectangular pattern direction: retry by volume, never by reasoning
+
+Pattern direction is unpredictable and fails QUIETLY. Instances land outside the body, remove
+nothing, and no error is raised. Build, compare removed volume against expectation, and negate on
+mismatch. Loop all four sign combinations; it costs nothing when it is not needed.
+
+```python
+def build_pattern(pats, feat, body, ax1, q1, d1, ax2, q2, d2, expected):
+    v1 = body.volume
+    for s1 in ('', '-'):
+        for s2 in ('', '-'):
+            p = pats.createInput(adsk.core.ObjectCollection.create(), ax1, VI(q1),
+                                 VI(f'{s1}{d1}'),
+                                 adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
+            p.inputEntities.add(feat)
+            p.setDirectionTwo(ax2, VI(q2), VI(f'{s2}{d2}'))
+            f = pats.add(p)
+            if abs((v1 - body.volume) * 1000.0 - expected) < 1.0:
+                return f
+            f.deleteMe()
+    raise AssertionError('pattern never matched expected removal')
+```
+
+To shear a field so it follows a leaning wall, pass a construction line along the lean as direction
+two with step `row_pitch / cos(lean)`. That gives exactly `row_pitch` of vertical rise per row and
+holds the horizontal corner land constant on every row. `ConstructionAxes.setByLine` is rejected in
+the parametric environment; a sketch construction line works.
+
+## 66. Verify a slip fit by measurement, not by interference
+
+`interference_check` returns 0 pairs for a zero-clearance press fit as readily as for a correct one.
+Measure the gap along each face normal, and assert BOTH the per-side gap and that the part is centred
+in the opening, since a correct total gap can sit entirely on one side.
+
+```python
+def offsets(body, nx, ny, nz):
+    out = []
+    for f in body.faces:
+        g = f.geometry
+        if not isinstance(g, adsk.core.Plane):
+            continue
+        n = g.normal
+        if abs(abs(n.x * nx + n.y * ny + n.z * nz) - 1.0) > 1e-5:
+            continue
+        o = g.origin
+        out.append(round((o.x * nx + o.y * ny + o.z * nz) * 10, 4))
+    return sorted(set(out))
+
+sp = [v for v in offsets(shell, nx, ny, nz) if abs(abs(v) - expected_shell) < 0.05]
+ip = [v for v in offsets(insert, nx, ny, nz) if abs(abs(v) - expected_insert) < 0.05]
+assert len(sp) == 2 and len(ip) == 2, 'filter caught pattern facets; tighten the band'
+s_lo, s_hi, i_lo, i_hi = min(sp), max(sp), min(ip), max(ip)
+assert abs((i_lo - s_lo) - gap) < 2e-3 and abs((s_hi - i_hi) - gap) < 2e-3
+assert abs(((i_hi + i_lo) / 2) - ((s_hi + s_lo) / 2)) < 1e-6, 'gap all on one side'
+```
+
+**Band the filter tightly.** A patterned or pocketed body has hundreds of planar faces sharing a
+normal, and a naive min/max picks up the pattern facets.
+
+For rounded corners, slide each cylinder axis to a common plane and assert the axes coincide, which
+is what makes the clearance uniform round the corner rather than varying:
+
+```python
+t = -o.z / u.z                                    # o = cylinder origin, u = axis direction
+key = ((o.x + t * u.x) * 10, (o.y + t * u.y) * 10)
+```
+
+## 67. Design variants as suppressible cut blocks in ONE document
+
+When a product ships several versions of one feature (four shell patterns over an identical body),
+do not duplicate the document. The shell solid, fillet, hollow and the entire second part are
+identical across variants, so a copy per variant is four copies of the part that is not changing,
+and every later fix has to be applied four times.
+
+Build each variant as a named block of features and suppress all but one:
+
+```python
+GROUPS = {'hex':      ('hex_cut_', 'hex_pattern_'),
+          'diamond':  ('dia_cut_', 'dia_pattern_'),
+          'dogtooth': ('tth_cut_', 'tth_pattern_'),
+          'flower':   ('flw_L_cut_',)}
+ALL = tuple(p for g in GROUPS.values() for p in g)
+
+def activate(which):
+    for i in range(tl.count):
+        n = tl.item(i).name
+        if n.startswith(ALL):
+            tl.item(i).isSuppressed = not n.startswith(GROUPS[which])
+```
+
+Rules that make this safe:
+
+- **Prefix every feature in a block.** The prefix IS the grouping mechanism; a stray unprefixed
+  feature will never be suppressed and will silently apply to every variant.
+- **Shared entities must sit outside all blocks.** A construction sketch used as a pattern direction
+  by several blocks (`lean_ref`) belongs to none of them and must never be suppressed.
+- **Set `participantBodies` on every cut.** Variant blocks are appended to the END of the timeline,
+  so unlike the original block they run AFTER other bodies exist, and a symmetric through-extent
+  will happily slice them. Verify by asserting the other body's volume and face count are unchanged.
+- **Assert the face count after activating**, before exporting. It is the cheapest proof that the
+  right block is live.
+
+## 68. Verify an opening count by face arithmetic, not by looking
+
+A patterned shell has an exact face count, and it is the strongest cheap check available:
+
+```
+faces = base_faces + openings * edges_per_opening
+```
+
+`base_faces` is the un-patterned hollow body: for a filleted rectangular sleeve it is 4 outer planes
++ 4 outer cylinders + 4 inner planes + 4 inner cylinders + top ring + bottom ring = **18**. Confirm
+it once by suppressing every cut block and reading `body.faces.count`.
+
+Then each clean through-opening contributes one face per edge of its profile:
+
+| pattern | openings | edges each | expected | got |
+|---|---|---|---|---|
+| pointy-top hex | 170 | 6 | 18 + 1020 = 1038 | 1038 |
+| diamond | 254 | 4 | 18 + 1016 = 1034 | 1034 |
+| 9-gon dogtooth | 64 | 9 | 18 + 576 = 594 | 594 |
+| arc cells | 136 | 2 or 3 arcs | 18 + 656 = 674 | 674 |
+
+This catches everything that matters: a pattern instance that landed off the body removes nothing
+and the count drops; two openings that merged produce fewer faces than the sum; a clipped opening
+merges with the outer surface and breaks the arithmetic entirely. A screenshot catches none of the
+three.
+
+If the count is wrong it is nearly always pattern direction. Negate the distance and rebuild rather
+than reasoning about which way Fusion went (section 65).
+
+## 69. Analytic cell decomposition, handed to Fusion as three-point arcs
+
+For any pattern defined as the FACES of an arrangement of overlapping curves, Fusion cannot compute
+the arrangement (gotchas.md, "Sketch profile computation does not scale"). Derive the cells offline
+and draw them as finished closed loops.
+
+The property that makes this exact for circle arrangements: each cell is the intersection of
+inside-discs and outside-disc-complements, so insetting by half the member width keeps every
+bounding curve a circular arc on the SAME centre.
+
+```
+cell       = { p : |p-c| <= R        for c in IN } and { p : |p-c| >= R        for c in OUT }
+inset cell = { p : |p-c| <= R-mem/2  for c in IN } and { p : |p-c| >= R+mem/2  for c in OUT }
+```
+
+No offset curves, no approximation, no polyline fallback.
+
+Procedure:
+
+1. Sample the field to discover which containment signatures actually occur. Each distinct
+   signature is a cell.
+2. Per signature, intersect every pair of constraint circles at their INSET radii; keep the points
+   satisfying all remaining constraints.
+3. Sort the surviving points by angle about their centroid.
+4. For each consecutive pair, choose the arc whose MIDPOINT also satisfies every constraint.
+5. Emit `(centre, radius, a1, a2, ccw)` and draw with `addByThreePoints(start, mid, end)`.
+
+**The trap: a two-arc cell must take its two arcs from DIFFERENT circles.** For a lens both bounding
+circles pass the midpoint test, so a "smallest sweep wins" rule picks the same circle twice, traces
+out and back, and collapses the cell to a zero-area sliver. Nothing errors. The symptom is that only
+the higher-order cells survive and open area reads roughly a third of what it should. Track the
+previous arc's circle and exclude it.
+
+Fusion needs no coincident constraints if endpoints are computed from the same arc data: 208 arcs
+describing 86 cells resolved to exactly 86 profiles.
+
+```python
+def arc_triple(A):
+    d = ((A['a2']-A['a1']) % (2*math.pi)) if A['ccw'] else -((A['a1']-A['a2']) % (2*math.pi))
+    return [(A['cx'] + A['r']*math.cos(a), A['cy'] + A['r']*math.sin(a))
+            for a in (A['a1'], A['a1'] + d/2, A['a2'])]
+```
+
+Cross-validate the generator by rasterising ITS OUTPUT (not the original curves) and comparing open
+area against an independent estimate. That is what exposed the lens bug.
+
+The cost is parametricity: the sketch carries literal coordinates and will not rescale with the
+drivers. Budget one block per size, named accordingly, and keep the generator script beside the CAD
+source rather than in a scratch directory.
+
+## 70. Jittered polygon seed: a constrained N-gon Fusion will actually accept
+
+Combines the gotchas "numerically redundant dimension" and "inferred constraints survive
+isComputeDeferred" into one helper. Use for any opening profile that is not a regular polygon, where
+`addScribedPolygon` does not apply.
+
+```python
+def seed(name, plane, pts, u_exprs, v_exprs, tp):
+    """pts: sketch-space vertices (cm). u_exprs/v_exprs: |distance from origin| per vertex."""
+    sk = root.sketches.add(plane); sk.name = name
+    sk.isComputeDeferred = True
+    L = sk.sketchCurves.sketchLines
+    jit = [(0.005*(k+1)*(1 if k % 2 else -1), 0.004*(k+1)*(-1 if k % 2 else 1))
+           for k in range(len(pts))]
+    jp = [P(x+jx, y+jy, 0) for (x, y), (jx, jy) in zip(pts, jit)]
+    lines = [L.addByTwoPoints(jp[0], jp[1])]
+    for k in range(1, len(jp)-1):
+        lines.append(L.addByTwoPoints(lines[-1].endSketchPoint, jp[k+1]))
+    lines.append(L.addByTwoPoints(lines[-1].endSketchPoint, lines[0].startSketchPoint))
+    while sk.geometricConstraints.count:
+        sk.geometricConstraints.item(0).deleteMe()
+    sk.isComputeDeferred = False
+    assert sk.geometricConstraints.count == 0
+    sd = sk.sketchDimensions
+    verts = [lines[0].startSketchPoint] + [l.endSketchPoint for l in lines[:-1]]
+    for k, (pt, ue, ve) in enumerate(zip(verts, u_exprs, v_exprs)):
+        sd.addDistanceDimension(sk.originPoint, pt, DO.HorizontalDimensionOrientation,
+                                P(tp[0] + 0.3*k, tp[1], 0)).parameter.expression = bare(ue)
+        sd.addDistanceDimension(sk.originPoint, pt, DO.VerticalDimensionOrientation,
+                                P(tp[0], tp[1] - 0.3*k, 0)).parameter.expression = bare(ve)
+    assert sk.isFullyConstrained, f'{name}: under-constrained'
+    assert sk.profiles.count == 1, f'{name}: {sk.profiles.count} profiles'
+    return sk
+```
+
+Every expression is an unsigned distance from the origin, so keep the seed away from the axes and
+check the smallest is comfortably positive before building. `bare()` appends `+ 0 mm` to a lone
+parameter name to dodge the G6 bare-name freeze.
+
+## 71. Generated silhouette: draw offline, gate offline, hand Fusion finished loops
+
+For decorative flat-plate art (mountain skylines, city outlines, lattice scenes) the drawing is not
+parametric CAD work and should not be attempted as such. The pipeline that works:
+
+1. **A generator module** holds every driver and emits the drawing as closed loops in mm, plus a
+   `geometry.json` of derived numbers for cross-checking the CAD. Use a seeded LCG, not
+   `random.seed`, so it reproduces across Python versions.
+2. **A rasteriser** renders the front elevation at 0.1 mm and runs printability gates (section 72).
+   It paints failures onto a preview PNG and prints per-region bounding boxes in mm.
+3. **A scanline union area** over the same loops, so the CAD has something independent to be checked
+   against. Sample rows at `z0 + (i + 0.5) * dz` and merge per-row intervals; stable from
+   dz 0.01 down to 0.002.
+4. **Fusion** reads the loops from JSON and chains `sketchLines.addByTwoPoints`, passing the previous
+   `SketchPoint` as the new start so vertices stay coincident. 568 points build in seconds with
+   `isComputeDeferred = True`.
+5. **Classify profiles** (section 72) and extrude the survivors as one Join.
+6. **Reconcile the volume** against step 3.
+
+The sketch carries literal coordinates and no dimensions. That is inherent, not a defect: say so in
+the SKU README, and note that changing any size driver means re-running the generator and rebuilding
+that one feature. Everything *else* in the model stays fully parametric.
+
+```python
+loops = json.load(open(SRC))['loops']
+sk = root.sketches.add(root.xYConstructionPlane)
+sk.isComputeDeferred = True
+lines = sk.sketchCurves.sketchLines
+for lp in loops:
+    seg = lines.addByTwoPoints(P(lp[0][0] / 10.0, lp[0][1] / 10.0, 0),
+                               P(lp[1][0] / 10.0, lp[1][1] / 10.0, 0))
+    first, prev = seg.startSketchPoint, seg.endSketchPoint
+    for x, y in lp[2:]:
+        prev = lines.addByTwoPoints(prev, P(x / 10.0, y / 10.0, 0)).endSketchPoint
+    lines.addByTwoPoints(prev, first)
+sk.isComputeDeferred = False
+```
+
+## 72. Classify arrangement profiles by a guaranteed interior point
+
+Overlapping loops make the enclosed voids into profiles too, and a centroid is not reliably inside
+its own profile (gotchas.md). Build the outer ring from the profile's own curves, then sample inward
+off each edge midpoint.
+
+```python
+def chain(segs):
+    """Order an unsorted bag of (p, q) segments into a closed ring."""
+    ring, used = [segs[0][0], segs[0][1]], {0}
+    while len(used) < len(segs):
+        tail = ring[-1]
+        for k, (a, b) in enumerate(segs):
+            if k in used:
+                continue
+            if abs(a[0] - tail[0]) < 1e-6 and abs(a[1] - tail[1]) < 1e-6:
+                ring.append(b); used.add(k); break
+            if abs(b[0] - tail[0]) < 1e-6 and abs(b[1] - tail[1]) < 1e-6:
+                ring.append(a); used.add(k); break
+        else:
+            break
+    return ring[:-1]
+
+
+def outer_ring(prof):
+    for lp in prof.profileLoops:
+        if not lp.isOuter:
+            continue
+        segs = []
+        for pc in lp.profileCurves:
+            g = pc.geometry                       # all SketchLine -> Line3D here
+            segs.append(((g.startPoint.x * 10, g.startPoint.y * 10),
+                         (g.endPoint.x * 10, g.endPoint.y * 10)))
+        return chain(segs)
+
+
+def votes(ring, loops, step=0.05):
+    """Majority vote over interior samples. step must be under the smallest feature."""
+    n = len(ring)
+    a2 = sum(ring[i][0] * ring[(i + 1) % n][1] - ring[(i + 1) % n][0] * ring[i][1]
+             for i in range(n))
+    sgn = 1.0 if a2 > 0 else -1.0                 # CCW -> interior is left of travel
+    yes = no = 0
+    for i in range(n):
+        ax, ay = ring[i]
+        bx, by = ring[(i + 1) % n]
+        dx, dy = bx - ax, by - ay
+        L = math.hypot(dx, dy)
+        if L < 1e-6:
+            continue
+        px = (ax + bx) / 2 - sgn * dy / L * step
+        py = (ay + by) / 2 + sgn * dx / L * step
+        if not pip(px, py, ring):                 # sample escaped a thin profile
+            continue
+        if any(pip(px, py, lp) for lp in loops):
+            yes += 1
+        else:
+            no += 1
+    return yes, no
+```
+
+Profiles where both counts come back zero are thinner than `2 * step` and can be dropped; on a
+250 mm part that was one profile well under a nozzle width. **The volume reconciliation is what
+proves the classification** — the vote is a heuristic, the area is not.
+
+## 73. Rebuild one mid-timeline feature in place, not appended
+
+Deleting and re-adding a feature appends it to the end of the timeline, which reorders it relative to
+everything downstream. For a Join that later features cut into, or a fillet whose chain overlaps
+another fillet, that changes the result silently.
+
+```python
+tl = design.timeline
+for i in range(root.features.count):
+    if root.features.item(i).name == 'ex_skyline':
+        root.features.item(i).deleteMe()
+        break
+sk = root.sketches.itemByName('sk_skyline')
+if sk:
+    sk.deleteMe()
+
+idx = [i for i in range(tl.count) if tl.item(i).name == 'ex_plate'][0]
+tl.markerPosition = idx + 1        # new features insert HERE
+# ... build the sketch and feature ...
+tl.moveToEnd()
+```
+
+Then diff the feature-name list: deleting a Join takes downstream fillets with it (gotchas.md), so
+restore them at their original slots, also via `markerPosition`. Verify by volume, and print the last
+few timeline names to confirm the order.
+
+## 74. Self-supporting ramp as a loft between two XY-plane profiles
+
+To grow a wedge or ramp off a prismatic feature without sketching on YZ (which inverts sketch X to
+negative world Z), loft between two rectangles on offset XY planes:
+
+```python
+# plane A at the ramp start, plane B at its end
+pi_ = planes.createInput(); pi_.setByOffset(root.xYConstructionPlane, VI('z_wedge_near'))
+# ... section A: pier_w x hook_t
+# ... section B: pier_w x (hook_t + hook_up)
+li = lofts.createInput(adsk.fusion.FeatureOperations.JoinFeatureOperation)
+li.loftSections.add(secA)
+li.loftSections.add(secB)
+li.participantBodies = [body]
+```
+
+The loft's swept face is planar at `atan( rise / run )` off the build direction, so the ramp angle is
+**derived from the two dimensions and never typed**. Volume is the exact triangular prism
+`width * rise * run / 2`, which asserts to four decimals.
+
+Used for a printed hook: the arm extrudes flat, the loft adds the upturned tip at 39.8 degrees off
+print Z, and nothing overhangs.
+
+## 75. Nozzle-relative printability gates for flat-plate art
+
+Three raster checks over the front elevation, at 0.1 mm/px. All three failed for the wrong reasons on
+the first attempt; these are the corrected forms.
+
+| check | method | threshold |
+|---|---|---|
+| connectivity | flood fill from a known-solid seed; count unreached material px | 0 |
+| min feature | morphological opening at `MIN_FEATURE`, then per-blob area | 0.9 mm, no region > 2.0 mm^2 |
+| min gap | same on the inverted image | 0.9 mm, no region > 1.5 mm^2 |
+
+**Fail on individual REGIONS, not on total percentage of area lost.** A square-kernel opening cannot
+distinguish *narrow* from *short*, so a percentage gate condemns every blunt summit and every tree
+apex. Worse, the wedge of sky between any two overlapping shapes always tapers to a point, so it
+always trips.
+
+**Set the failing threshold at nozzle scale, not structural comfort.** 1.6 mm (4 perimeters) reads as
+a sensible minimum and it vetoes intentional sharp points, which on a 5 mm plate print fine and just
+round by about a nozzle. 0.9 mm (2 line widths) is where the printer genuinely cannot lay material.
+Keep 1.6 mm as an advisory report: it says how delicate the drawing is without being a gate.
+
+**Paint the failures onto the preview and print per-region bounding boxes in mm.** "0.9% of sky lost"
+does not tell you what to fix; "1.78 mm^2 at x -68.2..-66.7, z 11.1..13.5" does.
+
+The dominant defect these catch is not thin limbs, it is the **near-miss**: two boundaries passing
+0.12 to 0.90 mm apart, or crossing at a shallow tangential angle. Five of them on one part. Shapes
+must either clearly overlap or clearly separate; the near-miss is the only bad case, and it is
+invisible at any zoom level a human would use.

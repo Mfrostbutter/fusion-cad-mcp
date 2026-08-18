@@ -199,7 +199,7 @@ vp.fit(); vp.refresh(); adsk.doEvents()
 vp.saveAsImageFile('C:/abs/path/shot.png', 1400, 780)
 ```
 
-Then `Read` the PNG. Cheaper, higher resolution, no transparency surprise, and the file can be dropped straight into `catalog/<SKU>/docs/`.
+Then `Read` the PNG. Cheaper, higher resolution, no transparency surprise, and the file can be dropped straight into the part's `docs/` folder.
 
 ## `viewExtents` is in cm (internal units), like everything else (2026-07-16)
 
@@ -232,7 +232,7 @@ Measure `native_w_at_scale_1` with a throwaway import at `scale=1.0` first; scal
 
 After `importSVG`, counters and ring interiors are their own profiles. Extruding every profile turns letter counters solid and fills ring shapes: an "8" becomes a blob, an outlined circle becomes a disc.
 
-Real example (n8n logo, 10 profiles): 1 five-loop graph mark, 1 three-loop "8", 2 single-loop "n" letters, and **6 hole profiles** (four node counters at 4.72 mm² each, two "8" counters at 2.32 and 3.15 mm²).
+Real example (a wordmark logo, 10 profiles): 1 five-loop graph mark, 1 three-loop glyph, 2 single-loop letters, and **6 hole profiles** (four glyph counters at 4.72 mm² each, two more at 2.32 and 3.15 mm²).
 
 Fusion represents a region-with-holes as a profile whose `profileLoops.count > 1` (first loop `isOuter=True`, the rest `False`), and *also* emits each hole as its own single-loop profile.
 
@@ -454,13 +454,25 @@ cut_in.participantBodies = [body]
 
 Without this, Fusion may pick the wrong body or apply the cut to all candidate bodies. Always set when more than one body is present. Also required for the Join extrude pattern (`patterns.md` section 23) so the lip flange joins onto the body rather than creating a new disconnected solid.
 
-## CAD volume is NOT a filament-weight estimate
+## CAD volume is NOT a filament-weight estimate, and the correction factor is not a constant (corrected 2026-07-31)
 
-`body.volume` (returns cm^3) is the geometric solid volume. Real print weight is dramatically lower because slicers use sparse infill, fixed wall counts, and don't fill cavities the way a solid would.
+`body.volume` (returns cm^3) is the geometric solid volume. Printed mass is lower, because sparse infill leaves air inside anything thick enough to have an inside.
 
-Symptom: a 306 cm^3 tray modeled in Fusion estimates "~310g of ABS at solid density" but actually prints at ~90g (30% infill, 3 perimeters, 5 top/bottom layers). Pricing off the solid number kills margin; pricing off a guess is just as bad.
+**The trap is not the first half of that sentence, it is assuming a fixed ratio.** Measured on two real parts:
 
-**Rule.** Treat any pre-slice filament weight as provisional. Slice the actual STL in Bambu Studio (or whichever slicer) and read grams + print time from there. Lock COGS only after the first verified print confirms the slicer numbers.
+| Part | Geometry | Printed mass as % of solid |
+|---|---|---|
+| 306 cm^3 tray, 30% infill | chunky, infill dominates | **~29%** |
+| Fluted organizer shells, 3.2 mm walls | thin-walled, perimeters dominate | **68.2%** |
+| Its inserts, 3.0 mm walls, large cavities | thin-walled, more room for infill | **59.7%** |
+
+A 3.2 mm wall at ~0.42 mm line width is 7-8 perimeters, so it is **100% solid and the infill percentage never applies to it at all**. Only floors and thick plinth-like regions contain any infill. Carrying the 29% figure from a chunky part onto a thin-walled one underestimated filament by **2.1x** and would have set a price on a set that costs twice what was budgeted.
+
+Note the last two rows are the same design: shells and inserts differed by 8.5 points. Predicting the inserts from the shell ratio still overshot by 14%.
+
+**Rule.** Any pre-slice number is provisional, full stop. Do not scale CAD volume by a remembered ratio; slice the actual STL and read grams and time. If you must estimate before slicing, bound it: thin-walled parts approach solid density, chunky parts approach the infill fraction, and the answer is somewhere between.
+
+**Two-tone costs more, not less**, and the cheap spool belongs on the heavy part. One colour per plate beats an AMS swap: a mid-print colour change purges more filament than a small part weighs, and per-plate printing reports `filament change times: 0` with no purge tower.
 
 ## `document/open` (execute) requires fileId in urn form
 
@@ -574,13 +586,13 @@ Recipes recorded so a future first print has a baseline. None of the values belo
 | Source | Mechanism | Per-face clearance | Diametric clearance | Other |
 |---|---|---|---|---|
 | What-Make-Art print-in-place | Captive cone + cylinder, one body | -0.3 mm flat faces, -0.2 mm cone face | n/a (mating faces are flat + cone, not cylindrical) | Cone -35deg taper, 55deg overhang on lead-in walls, 0.8 mm fillet on non-bed edges, 0.8 mm chamfer on bed face |
-| PDO Day 20 snap-hinge | Two separate flanges with nub-in-cavity | n/a (cavity uses Offset Face) | 0.8 mm starting, range 0.2-0.8 mm | Nub taper -10 to -14 deg, 1 mm fillet on nub edge, 0.6 mm Offset Start clearance between mating flanges, 0.1 mm layer height |
+| Snap-hinge | Two separate flanges with nub-in-cavity | n/a (cavity uses Offset Face) | 0.8 mm starting, range 0.2-0.8 mm | Nub taper -10 to -14 deg, 1 mm fillet on nub edge, 0.6 mm Offset Start clearance between mating flanges, 0.1 mm layer height |
 
-Apply Offset Face to all opposing cavity walls SIMULTANEOUSLY with one negative value: the offset applies per-face, so -0.4 mm on opposite cavity walls produces 0.8 mm diametric clearance (PDO Day 20 technique). The number you type into Offset Face is HALF the resulting diametric gap.
+Apply Offset Face to all opposing cavity walls SIMULTANEOUSLY with one negative value: the offset applies per-face, so -0.4 mm on opposite cavity walls produces 0.8 mm diametric clearance (standard snap-fit technique). The number you type into Offset Face is HALF the resulting diametric gap.
 
 Two distinct philosophies are visible in these sources:
 - What-Make-Art treats the cone face as the running surface (tight clearance there for less play) and the flat side faces as the support surfaces (looser clearance for free movement).
-- PDO uses no cone; the cylindrical nub rides in a cylindrical cavity with the cavity over-cut by Offset Face for free running, and a sketch-level taper on the nub (-10 to -14deg) to ease engagement.
+- The reference build uses no cone; the cylindrical nub rides in a cylindrical cavity with the cavity over-cut by Offset Face for free running, and a sketch-level taper on the nub (-10 to -14deg) to ease engagement.
 
 Neither source distinguishes by material. PLA, PETG, and ABS will produce different functional clearances at identical CAD dimensions because of layer-line surface roughness and shrinkage. Treat the tabulated values as PLA-on-FDM starting points.
 
@@ -1184,3 +1196,847 @@ Use `repr()` for anything that is not guaranteed to be a string, and test by wal
 leaks = [n.id for n in ast.walk(ast.parse(src))
          if isinstance(n, ast.Name) and n.id in {"null", "true", "false"}]
 ```
+
+## Reserved parameter names: `floor` is rejected (2026-07-31)
+
+`design.userParameters.add('floor', ...)` fails with `RuntimeError: 3 : param name is not valid`.
+The name collides with the built-in `floor()` expression function. This bites constantly because
+`floor` is the obvious name for a tray's floor thickness.
+
+Avoid as parameter names: `floor`, `ceil`, `abs`, `min`, `max`, `mod`, `round`, `sign`, `sqrt`,
+`pi`, `e`, and the trig functions. Suffix instead: `floor_t`, `min_gap`, `max_reach`.
+
+Verified 2026-07-31 by probe: `floor` REJECTED; `floor_t`, `wall`, `corner_r` all accepted.
+
+The error message names no parameter, so in a 38-param batch add you get no clue which one failed.
+Probe suspects individually (see the transaction gotcha below).
+
+## A failed `execute` rolls back the ENTIRE script (2026-07-31)
+
+The MCP `execute` call is one transaction. If any statement raises, everything the script did is
+discarded, including work that already succeeded before the failure.
+
+Observed: a 38-entry idempotent parameter add failed on `floor` about two-thirds through.
+Afterwards `userParameters.count` was **0**, not 25. Again later, a `RectangularPatternFeatures.add`
+threw at the end of a script that had already built a fully constrained sketch and a cut feature;
+the sketch did not exist afterwards.
+
+Two consequences:
+
+1. **Idempotent scripts stay safe** (`if not params.itemByName(name)`), because a re-run starts from
+   the same clean state. This is why the idempotent-add pattern matters more than it looks.
+2. **Probe risky calls inside `try/except`** so the script itself returns success and the good work
+   persists. Use this to test an unfamiliar API signature across several variants in ONE call
+   instead of burning a round trip per guess:
+
+```python
+for label, ent in candidates:
+    try:
+        result = SomeApi.create(ent, opt)
+        print(f"  {label}: OK {result.count}")
+    except Exception as e:
+        print(f"  {label}: FAIL {str(e).strip()[:80]}")
+```
+
+## `Path.create` requires an assembly-context proxy (2026-07-31)
+
+`adsk.fusion.Path.create(entity, chainOptions)` fails on ANY entity native to a component:
+
+```
+RuntimeError: 2 : InternalValidationError : Utils::getObjectPath(sketchCurve, objPath, nullptr, contextPath)
+```
+
+Fix: pass the occurrence proxy.
+
+```python
+path = adsk.fusion.Path.create(
+    curve.createForAssemblyContext(occurrence),
+    adsk.fusion.ChainedCurveOptions.connectedChainedCurves)
+```
+
+Verified matrix, geometry inside a component occurrence:
+
+| Entity | Result |
+|---|---|
+| native sketch line | FAIL |
+| native construction line | FAIL |
+| native `BRepEdge` | FAIL |
+| proxied sketch line | OK |
+| proxied construction line | OK |
+
+Construction geometry is perfectly valid as a path. The proxy is the only thing that matters.
+
+Related: prefer a sketch line over a body edge as a pattern path. Any cut you make along that edge
+splits it into fragments, and the path silently stops covering the full span.
+
+## Keep a feature in the SAME component as the bodies it touches (2026-07-31)
+
+The mirror image of the `Path.create` gotcha. A feature created in the **root** component whose
+`participantBodies` are occurrence body proxies cannot then be patterned:
+
+```
+RuntimeError: 2 : InternalValidationError : Utils::getObjectPath(feat, objPath, nullptr, path)
+```
+
+from `RectangularPatternFeatures.add`.
+
+**Rule.** Create the feature inside the component that owns the body. Do not cut occurrence bodies
+from root and then try to pattern the result.
+
+This costs less than it sounds. If every occurrence uses an identity `Matrix3D`, a sketch placed at
+the same world coordinates in three different components still lines up perfectly, so a pattern
+built separately per component reads as continuous across the assembly. Build one component's set,
+verify it, then batch the rest through a helper function.
+
+## Pattern on Path with "Path Direction" DISCARDS a leaning seed (2026-07-31)
+
+`PathPatternFeatureInput.isOrientationAlongPath = True` (the UI's **Path Direction**) re-derives
+each instance's orientation from the path frame. Any tilt the seed carried relative to the path is
+thrown away, and the seed itself is re-placed.
+
+Reproduction: a cut cylinder built at 20 degrees from vertical, patterned 100 times around a closed
+horizontal perimeter loop. Every instance came back **perfectly vertical**:
+
+```python
+for f in body.faces:
+    g = f.geometry
+    if isinstance(g, adsk.core.Cylinder) and g.radius < 0.3:
+        print(g.axis, math.degrees(math.acos(abs(g.axis.z))))
+# axis=(0,0,1)  lean_from_Z = 0.00   x100
+```
+
+The seed also moved: its flute ran from Z 1.75 instead of the intended Z 6.
+
+`isOrientationAlongPath = False` (**Identical**) preserves the lean, but instances are then pure
+translations, so they cannot wrap onto a face with a different normal.
+
+**Leaning features and corner wrapping are mutually exclusive with this feature.** Pattern on Path
+is right for something perpendicular to its path by design (the belt teeth in every tutorial). It
+is wrong for a deliberately tilted seed. For tilted features, use a rectangular pattern per planar
+face and accept that corners are not wrapped.
+
+On a straight path, Pattern on Path with Identical orientation is exactly a rectangular pattern, so
+there is no reason to reach for the more fragile feature.
+
+## Angular sketch dimensions pick the wrong branch silently (2026-07-31)
+
+Constraining a line's direction with `addAngularDimension` against a reference construction line has
+two solutions, and the solver may take the mirror one. The sketch still reports
+`isFullyConstrained = True`.
+
+Observed: a flute axis meant to run from Z=6 up to Z=100 flipped and landed at **Z=-88**, fully
+constrained, angle correct, direction inverted.
+
+Fix: drop the angular dimension. Constrain the far endpoint with TWO component distance dimensions:
+
+```python
+sd.addDistanceDimension(F.startSketchPoint, F.endSketchPoint,
+    DO.HorizontalDimensionOrientation, txt).parameter.expression = 'rib_len * sin(rib_lean)'
+sd.addDistanceDimension(F.startSketchPoint, F.endSketchPoint,
+    DO.VerticalDimensionOrientation, txt).parameter.expression = 'rib_len * cos(rib_lean)'
+```
+
+Distance dimensions are unsigned, so the solver holds whatever quadrant the geometry was drawn in,
+and there is no second branch to fall into. It also removes the reference construction line and its
+length dimension.
+
+**Rule.** Assert DIRECTION, not just constraint state:
+
+```python
+ws, we = F.worldGeometry.startPoint, F.worldGeometry.endPoint
+assert we.z > ws.z, 'axis is pointing downward'
+```
+
+`isFullyConstrained` tells you the sketch is solved. It does not tell you it solved the way you meant.
+
+## A computed parameter that can go negative fails silently (2026-07-31)
+
+Fusion does not complain when a computed `userParameter` resolves negative. It just produces
+nonsense geometry downstream.
+
+Observed: `m3_divider = outer_w - 2 * m3_edge_wall - brush_well_w - palette_slot_w`. Narrowing
+`outer_w` from 220 to 194 drove it to **-20 mm**. No error anywhere.
+
+**Rule.** After changing any headline dimension, print every dependent computed value and assert
+the ones that must stay positive:
+
+```python
+for n in ['m3_divider', 'zone_w', 'pencil_depth']:
+    v = design.userParameters.itemByName(n).value * 10
+    assert v > 0, f'{n} went negative: {v:.2f} mm'
+    print(f"  {n:16s} = {v:8.3f} mm")
+```
+
+Work the cascade out on paper BEFORE applying the edit. One headline change here forced three
+downstream fixes (pencil pitch, brush well width, palette slot width).
+
+## Restore-by-join: how to terminate a field of cuts on a clean boundary (2026-07-31)
+
+A cut extruded along a tilted axis has an end cap perpendicular to THAT axis, so the cap is a tilted
+ellipse. Starting such a cut exactly on the line where you want it to stop puts roughly half the cap
+past that line, and a row of them reads as a sawtooth.
+
+Do NOT try to land each cutter precisely on the boundary. Instead:
+
+1. **Overrun.** Start the cut beyond the boundary by at least the cutter radius, so the whole tilted
+   cap is buried in material you are about to restore.
+2. **Restore.** Join back the region that should have stayed solid, placed in the timeline AFTER the
+   cuts. It shears every instance off on exactly one plane.
+
+```python
+params.add('rib_z0', VI('plinth_h - rib_r'), 'mm', 'COMPUTED')   # 1. sink below the boundary
+ei = ext.createInput(outer_sketch.profiles.item(0),               # 2. restore, reusing the
+                     adsk.fusion.FeatureOperations.JoinFeatureOperation)  #    body's own profile
+ei.setDistanceExtent(False, VI('plinth_h'))
+ei.participantBodies = [body]
+ext.add(ei).name = 'plinth_band'
+```
+
+One join handles hundreds of cut instances and produces an exactly planar result. Verify by querying
+the cut faces, not by looking:
+
+```python
+zmins = [f.boundingBox.minPoint.z * 10 for f in body.faces
+         if isinstance(f.geometry, adsk.core.Cylinder) and f.geometry.radius < 0.3]
+print(min(zmins))   # must equal the boundary exactly
+```
+
+Three variants of the same move, all verified on one part:
+
+| Boundary | Restore shape |
+|---|---|
+| Bottom edge of a fluted face | full outer profile, Z 0..band |
+| Face that butts against another part | a pad on that face only, spanning the contact height |
+| Vertical corner where two fluted faces meet | a wall-thick square post at the corner, full height |
+| Top rim | a **RING**, outer profile offset inward. A solid block seals every cavity. |
+
+**Timeline order is load-bearing.** The restore join must sit after the cuts it trims and before any
+feature that cuts into the restored region. Twice on this part, downstream features (tongue/groove)
+had to be deleted and re-created to land on the correct side of a newly inserted join. When
+inserting into an existing timeline, work out what belongs on each side FIRST; delete-and-recreate
+is cheaper and far more predictable than reordering through the API.
+
+## Nested closed loops give two profiles; pick the ring by area (2026-07-31)
+
+A sketch with an outer rectangle and an inward `sketch.offset()` produces TWO profiles: the inner
+region, and the annular ring between them. Selecting the wrong one turns a rim band into a lid.
+
+```python
+profs = [(sk.profiles.item(i), sk.profiles.item(i).areaProperties().area)
+         for i in range(sk.profiles.count)]
+ring = min(profs, key=lambda t: t[1])[0]     # the ring is the smaller area
+```
+
+`sketch.offset(curves, insidePoint, distance)` builds the inner loop with a live offset constraint,
+so the ring stays parametric; find the resulting offset dimension and bind its expression.
+
+Note `areaProperties()` is a METHOD, not a property.
+
+## A leaning cut can never terminate cleanly on a perpendicular boundary (2026-07-31)
+
+Geometry limit worth knowing before you promise a customer a clean edge. A groove leaning `a` degrees
+from vertical sweeps `h * tan(a)` horizontally over a face of height `h`. Over 70 mm at 20 degrees
+that is 23 mm. So no VERTICAL line ever sits consistently between two flutes: whatever the width of
+a vertical border, exactly one groove per edge gets clipped at a varying position and tapers to a
+feather point.
+
+There is no parameter that removes this. The only fixes are to make the flutes vertical, or to lean
+the border to match. Usually the right answer is to accept it: the sliver is thin enough that the
+slicer drops it.
+
+The same argument in the other axis is why the restore-by-join trick works so well for HORIZONTAL
+boundaries (plinth, top rim) and only partly for vertical ones.
+
+## An unsigned distance dimension flips when its target is near zero (2026-07-31)
+
+Sibling of the angular-dimension branch flip, and more common. `addDistanceDimension` is UNSIGNED,
+so it constrains magnitude only. When the value is small, the solver is free to pick either side of
+the origin and will sometimes pick the wrong one. `isFullyConstrained` still reports True.
+
+Observed: a pocket meant to sit at Y = +3.5 mm landed at Y = **-3.5 mm**. Two sibling pockets
+dimensioned at 47.5 and 132.5 were both correct. Only the near-zero one flipped.
+
+**Rule.** Anchor whichever corner has the LARGER absolute coordinate, then assert the world
+position. Instead of dimensioning the near edge at `inset` = 3.5, dimension the far edge at
+`depth - inset` = 40.5:
+
+```python
+sd.addDistanceDimension(sk.originPoint, far_pt, DO.VerticalDimensionOrientation,
+                        txt).parameter.expression = 'm1_depth - insert_inset'
+assert far_pt.worldGeometry.y * 10 > 0, 'anchor solved to the mirror side'
+```
+
+Rough threshold: treat anything under ~10 mm as a coin flip. The fix costs nothing, so apply it
+whenever a choice of anchor edge exists.
+
+## Fusion auto-infers constraints on axis-aligned sketch geometry (2026-07-31)
+
+Creating a sketch line that happens to be exactly horizontal or vertical silently adds a geometric
+constraint. Budget your dimensions for the real DOF or you get:
+
+```
+RuntimeError: 3 : VCS_SKETCH_OVER_CONSTRAINTS - Sketch geometry is over constrained
+```
+
+Observed: a 4-point trapezoid has 8 DOF, so 8 distance dimensions should be exact. Two of its edges
+were axis-aligned, Fusion inferred horizontal on both, real DOF was 6, and the 7th dimension threw.
+
+**`isComputeDeferred = True` does NOT suppress the inference.**
+
+Deterministic fix: draw the flat edges with a small jitter so nothing is exactly axis-aligned, then
+add the constraints yourself.
+
+```python
+J = 0.07                                   # mm, on the second point of each flat edge
+...                                        # build lines with pts[i][1] + J
+sk.isComputeDeferred = False
+assert sk.geometricConstraints.count == 0, 'Fusion still inferred something'
+sk.geometricConstraints.addHorizontal(L0)
+sk.geometricConstraints.addHorizontal(L2)
+# now dimension exactly (2 * points - explicit_constraints) DOF
+```
+
+Asserting the constraint count turns an invisible assumption into a checked one. Without it you are
+guessing how many dimensions the sketch will accept.
+
+**Amended 2026-08-01: the inference is PER-API-CALL, not global.** `addCenterPointRectangle` does
+the opposite. It creates **zero** geometric constraints, so the rectangle comes back a free
+parallelogram, and adding four distance dimensions pulls the corners out of square. Observed 130.020
+mm on a rectangle dimensioned to 130, caught only by a bounding-box assert.
+
+So there is no rule of thumb to memorise, and both failure modes are silent in different directions:
+`addByTwoPoints` on axis-aligned geometry over-constrains, `addCenterPointRectangle` under-constrains.
+
+The one correct habit covers both:
+
+```python
+rect = sk.sketchCurves.sketchLines.addCenterPointRectangle(P(0, 0, 0), P(6.5, 4.5, 0))
+print(f"inferred constraints: {sk.geometricConstraints.count}")   # PROBE, never assume
+# add only what is missing, then dimension the remaining DOF
+```
+
+Follow it with a geometry assert, not just `isFullyConstrained`, because a fully-constrained sketch
+can still be constrained to the wrong shape:
+
+```python
+pts = [p.geometry for L in lines for p in (L.startSketchPoint, L.endSketchPoint)]
+assert abs(min(p.x for p in pts) * 10 + 65.0) < 1e-4, 'width wrong'
+```
+
+## `setTwoSidesDistanceExtent` direction one is NOT `setDistanceExtent` positive (2026-07-31)
+
+On the same sketch plane, the two APIs disagree about which way is positive.
+
+Observed on an XY sketch where `setDistanceExtent(False, ...)` had already been proven to extrude
+**+Z**: `setTwoSidesDistanceExtent(VI('2 mm'), VI('m1_height + 5 mm'))` sent the LARGE distance
+DOWNWARD, out of the body. The cut removed 0.112 cm^3 against 1.906 predicted, i.e. exactly the
+2 mm of height from the small side.
+
+No error. The feature reports healthy. Only the volume reveals it.
+
+```python
+v0 = body.volume
+...
+got, exp = v0 - body.volume, predicted_cm3
+assert abs(got - exp) < 0.01, f'cut removed {got:.3f}, expected {exp:.3f}'
+```
+
+**Rule.** Prefer one-sided `setDistanceExtent` with an overrun, in a direction you have already
+proven on that plane, over a two-sided extent whose sign convention you are assuming. If you must
+go two-sided, verify by volume before building anything on top of it.
+
+## Coplanar adjacent faces MERGE, which breaks face-based selection (2026-07-31)
+
+When a new feature lands coplanar with and adjacent to existing geometry, Fusion merges them into
+one BRepFace. Any heuristic that counts faces or filters them by area then silently finds the wrong
+thing.
+
+Observed: a dovetail joined to a wall, its top face coplanar with an adjacent pad strip. Expected
+two clean trapezoid faces of ~21.8 mm^2 with 4 edges each. Got one merged face of 33.33 mm^2 with
+10 edges and another of 29.47 mm^2 with 8, so an area filter found one where two were expected.
+
+**Fix: select EDGES by world coordinates, not faces by area.** Edge geometry survives the merge.
+
+```python
+edges = adsk.core.ObjectCollection.create()
+for e in body.edges:
+    bb = e.boundingBox
+    z0, z1 = bb.minPoint.z*10, bb.maxPoint.z*10
+    y0, y1 = bb.minPoint.y*10, bb.maxPoint.y*10
+    if abs(z0 - ztop) > 0.02 or abs(z1 - ztop) > 0.02:      # lies flat at the target height
+        continue
+    if y1 > y_face + 0.02 or y0 < y_face - depth - 0.02:    # inside the feature's own band
+        continue
+    if abs(y1 - y_face) < 0.02 and abs(y0 - y_face) < 0.02: # drop edges wholly on the mating plane
+        continue
+    edges.add(e)
+assert edges.count == expected, f'got {edges.count} edges'
+```
+
+Always assert the count. The filter is the hypothesis; the assert is the test.
+
+## File size is NOT an export health check (2026-07-31)
+
+An all-planar part tessellates to very few triangles, so a correct STL can look suspiciously tiny
+next to a curved one. Observed on one model: a 60-triangle insert (3 KB) and a 172-triangle insert
+(8 KB) beside a 13,080-triangle fluted shell (652 KB). All three were correct.
+
+Do not eyeball file sizes. Parse the binary header:
+
+```python
+raw = open(path, 'rb').read()
+n = struct.unpack('<I', raw[80:84])[0]
+assert len(raw) == 84 + n * 50, 'truncated or not binary STL'
+lo, hi = [1e9]*3, [-1e9]*3
+for i in range(n):
+    o = 84 + i*50 + 12                      # skip the 12-byte normal
+    for v in range(3):
+        for a in range(3):
+            x = struct.unpack('<f', raw[o+v*12+a*4 : o+v*12+a*4+4])[0]
+            lo[a], hi[a] = min(lo[a], x), max(hi[a], x)
+# compare lo/hi against body.boundingBox, and n against expectation
+```
+
+The bbox comparison is the part that matters: it proves the export contains the geometry you just
+built, not a stale body or an empty selection.
+
+## Fusion REJECTS shear transforms (2026-08-01)
+
+There is no way to shear a body. All three transform entry points validate for rigid transforms only
+and refuse a non-orthogonal `Matrix3D`:
+
+```
+moveFeatures.createInput2(coll) + defineAsFreeMove(m)  -> 2 : InternalValidationError : transform_raw(transform)
+moveFeatures.createInput(coll, m)                      -> 3 : invalid argument transform
+TemporaryBRepManager.transform(body, m)                -> 3 : invalid argument transform
+```
+
+Three independent rejections; treat it as a hard limit rather than an API-choice problem.
+
+This matters most when a finished model needs to lean. A shear would preserve every existing feature
+in one call; instead the lean has to be built into the geometry from the start.
+
+**Fix: build the shear as a LOFT between two identical profiles**, the upper one offset laterally.
+
+```python
+li = lofts.createInput(adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+li.loftSections.add(sk_bot.profiles.item(0))     # rect at z = 0,   centred at y = 0
+li.loftSections.add(sk_top.profiles.item(0))     # same rect at z = h, centred at y = h*tan(lean)
+li.isSolid = True
+body = lofts.add(li).bodies.item(0)
+assert abs(body.volume - w * d * h / 1000.0) < 0.01   # Cavalieri: a shear preserves volume
+```
+
+That volume identity is a free correctness check on the whole construction.
+
+**Do not substitute a rigid rotation.** For a leaning body with a FLAT BASE the two are not
+interchangeable: a rotation tilts the bottom face, so a flat base needs a horizontal trim, and that
+trim reaches `(depth / 2) * tan(lean)` up at the rear edge. It forces a wedge foot and cuts into
+whatever the walls carry. A shear keeps horizontal top and bottom faces and the full footprint.
+
+## Wall thickness and clearance are PERPENDICULAR quantities (2026-08-01)
+
+On any face that is not axis-aligned, mixing a perpendicular thickness with an axis-aligned
+dimension silently loses a factor of `cos(angle)`.
+
+The Shell feature offsets `t` perpendicular to every face. On a face leaning by `a`, that same wall
+measures `t / cos(a)` along the axis. So deriving a mating part's axis-aligned dimension as
+`outer - 2*wall - 2*gap` under-delivers the clearance.
+
+```python
+# vertical faces
+insert_w = 'outer_w - 2 * ( wall + fit_gap )'
+# leaning faces  <- the / cos(lean) is NOT optional
+insert_d = 'outer_d - 2 * ( wall + fit_gap ) / cos(lean)'
+```
+
+Observed on a 15 degree face: 0.304 mm of clearance where 0.400 was intended, with no error
+anywhere. Only a perpendicular measurement found it.
+
+The corrected form has a second payoff: the corner fillet axes of the two parts then coincide
+exactly, so the clearance is uniform around the corners instead of varying.
+
+## `ConstructionAxes.setByLine` is unsupported in the parametric environment (2026-08-01)
+
+```
+RuntimeError: 3 : Environment is not supported
+```
+
+Raised by `root.constructionAxes.add(input)` after `input.setByLine(InfiniteLine3D...)`.
+
+**Fix: use a sketch construction line as the direction entity.** Rectangular patterns, and anything
+else taking a direction, accept a `SketchLine`.
+
+```python
+sk = root.sketches.add(root.yZConstructionPlane)
+ln = sk.sketchCurves.sketchLines.addByTwoPoints(P(0, 0, 0), P(-L*cos_a, L*sin_a, 0))
+ln.isConstruction = True
+sk.geometricConstraints.addCoincident(ln.startSketchPoint, sk.originPoint)
+# two COMPONENT distance dims, never an angular dim (mirror branch, see the angular gotcha)
+sd.addDistanceDimension(..., DO.HorizontalDimensionOrientation, ...).parameter.expression = '50 mm * cos(lean)'
+sd.addDistanceDimension(..., DO.VerticalDimensionOrientation,   ...).parameter.expression = '50 mm * sin(lean)'
+# then ASSERT the resulting world direction, not just isFullyConstrained
+```
+
+## `addScribedPolygon`: no dimensions, an extra point, and a plane-dependent angle (2026-08-01)
+
+`sketchLines.addScribedPolygon(centre, sides, angle, radius, isInscribed)` works and applies a
+`PolygonConstraint`, but three things surprise:
+
+1. **It ships no dimensions and no construction circle.** The polygon is regular but free in centre,
+   size and rotation: 4 DOF. Constrain with one horizontal/vertical on the single axis-aligned edge
+   (rotation), one centre-to-vertex distance dim (size), and two origin-to-centre dims (position).
+2. **The centre is created as an EXTRA sketch point** beyond the 6 vertices. `SketchPoint` is
+   **unhashable**, so separating it from the vertices with `set()` membership throws
+   `TypeError: cannot use 'adsk.fusion.SketchPoint' as a set element`. Match on geometry instead.
+3. **Which `angle` gives a pointy top depends on the PLANE**, because the plane mapping flips an
+   axis: `pi/6` on XZ, `0` on YZ.
+
+Do not reason about (3). Try both and keep whichever puts exactly one vertex at max WORLD Z:
+
+```python
+for angle in (0.0, math.pi / 6.0):
+    sk = root.sketches.add(plane)
+    pg = sk.sketchCurves.sketchLines.addScribedPolygon(P(cx, cy, 0), 6, angle, r, True)
+    zs = sorted(v.startSketchPoint.worldGeometry.z for v in [pg.item(i) for i in range(pg.count)])
+    if len([z for z in zs if abs(z - zs[-1]) < 1e-9]) == 1:
+        break            # single apex at the top
+    sk.deleteMe()
+```
+
+## A computed value written as a literal dimension expression de-parameterises silently (2026-08-01)
+
+Computing an anchor distance in Python and assigning it as a literal LOOKS correct, because the
+number is right and the geometry lands exactly where intended:
+
+```python
+d.parameter.expression = f'{x_val} mm'      # WRONG: pins the feature forever
+d.parameter.expression = 'insert_in_w / 2'  # right
+```
+
+Nothing errors, no feature fails, and `isFullyConstrained` stays True. The damage only appears later,
+when changing a driving parameter moves some geometry and leaves the literal-pinned features behind,
+producing wrong wall thicknesses with no failure anywhere.
+
+Related trap already documented elsewhere: restoring a dimension with `p.value` also replaces the
+expression with a literal. Always use `p.expression`.
+
+**Add an end-of-build sweep.** Three lines, and it is the only thing that catches this:
+
+```python
+import re
+literals = []
+for i in range(root.sketches.count):
+    sk = root.sketches.item(i)
+    for j in range(sk.sketchDimensions.count):
+        e = sk.sketchDimensions.item(j).parameter.expression
+        if re.fullmatch(r'\s*-?[\d.]+\s*(mm|cm|deg)?\s*', e or ''):
+            literals.append(f'{sk.name}[{j}] = {e}')
+assert not literals, f'literal-valued dimensions: {literals}'
+```
+
+## A square cavity inside a filleted profile leaves a razor-thin corner (2026-08-01)
+
+Cutting an axis-aligned rectangular cavity inside a round-cornered outer profile makes the CORNER the
+thinnest point, and the arithmetic is not intuitive. With an outer corner radius of 5.2 and the
+cavity inset 3.2 on both axes, the cavity corner sits `sqrt(3.2^2 + 3.2^2) = 4.525` mm from the arc
+centre, leaving `5.2 - 4.525 = 0.675` mm of wall where 2.0 was intended. No error, no warning.
+
+**Fix, exact rather than approximate:** fillet the cavity corners at
+
+```
+cav_r = outer_corner_r - wall
+```
+
+That places the cavity arc centre exactly ON the outer arc centre. The two arcs become concentric and
+the wall is a perfect annulus of `wall` right around the corner. Verify by pulling both cylinder faces
+and differencing the radii.
+
+## "Saved" means saved to the CLOUD, not to disk (2026-08-01)
+
+After a user saves in the Fusion UI, `doc_state` reports the document name and `is_dirty false`, and
+the SKU folder can still be completely empty. A clean document state says the cloud copy is current
+and says nothing about the filesystem.
+
+**After a save, verify the FILESYSTEM, not the document state.**
+
+The local archive is a separate export step, and it IS automatable once the document has a name, so
+only the first Save As is genuinely manual:
+
+```python
+em = design.exportManager
+em.execute(em.createFusionArchiveExportOptions(f'{out}/{SKU}.f3d'))
+em.execute(em.createSTEPExportOptions(f'{out}/{SKU}.step'))
+assert os.path.getsize(f'{out}/{SKU}.f3d') > 1000
+```
+
+## Wiping a model: delete TIMELINE FEATURES first, then sketches (2026-08-01)
+
+Deleting sketches and construction planes before their consuming features orphans those features and
+leaves timeline entries that cannot be removed individually:
+
+```
+AttributeError: 'TimelineObject' object has no attribute 'deleteMe'
+```
+
+Correct order is features, then sketches, then planes and axes, then bodies. If you have already
+orphaned them, recover with a repeated-pass loop that deletes through the timeline entity and
+restarts after each success, since indices shift:
+
+```python
+for _pass in range(40):
+    if tl.count == 0:
+        break
+    progress = False
+    for i in range(tl.count - 1, -1, -1):
+        try:
+            ent = tl.item(i).entity
+        except Exception:
+            ent = None
+        if ent is None:
+            continue
+        try:
+            ent.deleteMe()
+            progress = True
+            break
+        except Exception:
+            continue
+    if not progress:
+        break
+```
+
+## `interference_check` cannot tell a slip fit from a press fit (2026-08-01, reinforces 2026-07-31)
+
+Already noted for coincident faces; worth restating with the fix, because it recurred on a second
+product. It reports 0 pairs for a zero-clearance fit, a correct 0.4 mm fit, and surfaces that merely
+touch. It proves parts do not OVERLAP and says nothing about whether they FIT.
+
+Measure instead, **along each face normal**, and assert two things, not one:
+
+```python
+gap_lo, gap_hi = i_lo - s_lo, s_hi - i_hi
+off = ((i_hi + i_lo) / 2) - ((s_hi + s_lo) / 2)
+assert abs(gap_lo - target) < 2e-3 and abs(gap_hi - target) < 2e-3
+assert abs(off) < 1e-6, 'correct total gap, but sitting all on one side'
+```
+
+**Filter the faces tightly.** On a patterned or pocketed body there are hundreds of planar faces with
+the same normal; a naive min/max over all of them picks up pattern facets and produces nonsense. Band
+the filter around the expected offset.
+
+## Fusion rejects a NUMERICALLY redundant dimension and leaves the sketch under-constrained (2026-08-03)
+
+A closed loop of N chained lines has exactly 2N degrees of freedom, so 2N distance dimensions from
+the origin should fully constrain it. They do not, and the failure is silent in the worst way: the
+call raises `VCS_SKETCH_OVER_CONSTRAINTS`, and if you catch it and carry on you are left with an
+under-constrained sketch that looks finished.
+
+The cause is that Fusion tests redundancy against the CURRENT geometry, not the structure. Build a
+rhombus with its top and bottom vertices at the same `u`, and a dimension pinning the second one is
+judged already implied even though nothing constrains it.
+
+Measured on a 4-line rhombus, adding dimensions one at a time:
+
+```
+dim 1: T.H OK    dim 2: T.V OK    dim 3: R.H OK    dim 4: R.V OK
+dim B.H FAILED after 4 accepted
+dim 5: B.V OK    dim 6: L.H OK    dim 7: L.V OK
+7 of 8 accepted, isFullyConstrained still False
+```
+
+**Fix: create the geometry jittered so no two vertices share a coordinate, then let the dimensions
+pull it into exact shape.** A few tenths of a millimetre is enough, and every dimension then binds.
+
+```python
+J = 0.03   # cm
+l1 = L.addByTwoPoints(P(cu + J, cv - hv, 0), P(cu + hu, cv + J, 0))
+l2 = L.addByTwoPoints(l1.endSketchPoint, P(cu - J, cv + hv, 0))
+...
+assert sk.isFullyConstrained, 'under-constrained'
+```
+
+For a polygon with many repeated coordinates, jitter each vertex by a DIFFERENT amount
+(`0.005 * (k + 1)`, alternating sign) so no tie survives anywhere.
+
+To diagnose an unfamiliar shape, count the accepted dimensions: wrap each `addDistanceDimension` in
+try/except, tally the successes, and compare against the DOF you expected. That is far faster than
+reasoning about which constraint Fusion inferred.
+
+## `addByTwoPoints` infers constraints even with `isComputeDeferred = True` (2026-08-03)
+
+Deferring compute does not disable constraint inference. A chained polygon comes back carrying
+horizontal, vertical and perpendicular constraints you never asked for, which is the first reason
+a dimension set gets rejected as over-constraining.
+
+Purge them before dimensioning, and assert the purge worked AFTER re-enabling compute, because
+`geometricConstraints.count` reads 0 while compute is still deferred and will happily pass a check
+placed too early:
+
+```python
+while sk.geometricConstraints.count:
+    sk.geometricConstraints.item(0).deleteMe()
+sk.isComputeDeferred = False
+assert sk.geometricConstraints.count == 0, 'constraints survived the purge'
+```
+
+## STEP export snapshots only the ACTIVE bodies (2026-08-03)
+
+`createSTEPExportOptions` writes the current geometry, not the feature tree. On a document holding
+several suppressed variant blocks, the STEP contains whichever one happened to be unsuppressed and
+silently omits the rest.
+
+The tell is a file size that barely moves. A model whose `.f3d` went from 701 KB to 1.34 MB after
+three new pattern blocks were added exported a STEP of 1,732,772 bytes against the previous
+1,733,405: essentially unchanged, because only one configuration was ever in it.
+
+If variants matter, either export one STEP per variant (activate, export, repeat) or state plainly
+in the SKU README that the STEP is single-configuration. The `.f3d` archive is the only artifact
+that carries them all.
+
+## STL and 3MF tessellate independently; never cross-check one against the other (2026-08-03)
+
+Both exporters accept `MeshRefinementHigh`, and it is tempting to verify an export pair by comparing
+triangle counts. They will not match, and the ratio is not even constant:
+
+| body | STL tris | 3MF tris | ratio |
+|---|---|---|---|
+| hex shell | 5,528 | 6,720 | 1.22 |
+| dogtooth shell | 3,328 | 4,520 | 1.36 |
+| flower shell | 20,096 | 33,000 | 1.64 |
+
+3MF is consistently finer and its mesh volume tracks CAD more tightly (+/-0.036% against the STL's
++/-0.15%). Neither is wrong. **Verify each format against CAD volume and bounding box, never against
+the other format.**
+
+Worth checking on 3MF specifically, since it is a zip and can be parsed directly: `unit` is
+`millimeter`, exactly one `<object>` carries a mesh, and the edge-use map has every edge used twice
+(watertight). A `<triangle>` regex count over the `.model` parts is enough for the count; parse the
+vertices for volume.
+
+## Sketch profile computation does not scale to a large arrangement of overlapping curves (2026-08-03)
+
+Roughly 100 mutually overlapping circles in one sketch does not merely run slowly, it does not
+return. A probe that built the circles and then read `sketch.profiles.count` timed out with no
+result. The rollback was clean, so nothing was left behind, but no amount of patience helps.
+
+This rules out the obvious construction for any arrangement-based pattern (flower of life,
+overlapping-circle lattices, Voronoi from generators): you cannot draw the generators and let Fusion
+find the faces between them.
+
+**Do the arrangement offline and hand Fusion finished, non-overlapping closed loops.** Explicit
+three-point arcs work well and need no coincident constraints; 208 arcs describing 86 disjoint cells
+resolved to exactly 86 profiles, instantly. See patterns.md, "Analytic cell decomposition".
+
+The cost is parametricity: such a sketch carries literal coordinates and will not rescale with the
+drivers. Budget for one block per size, named accordingly, and keep the generator script beside the
+CAD source rather than in a scratch directory.
+
+## The union of overlapping loops is NOT the union of the arrangement's profiles (2026-08-03)
+
+23 overlapping closed polygons (a generated mountain-and-forest silhouette, 568 points) resolve to
+111 profiles in a few seconds, so unlike ~100 overlapping circles this arrangement is perfectly
+tractable. The trap is what you do next.
+
+Extruding **every** profile as one Join came out **4.77% heavy**. The arrangement turns each
+*enclosed void* into a profile too: the pocket of sky bounded above by a mountain, on the sides by
+two trees and below by a shrub is a legitimate face of the arrangement, and extruding it fills the
+sky.
+
+**Select only the profiles that lie inside at least one source loop.** With the loops in hand, that
+is an even-odd point-in-polygon test per profile. On this part 101 were kept and 10 rejected.
+
+The check that proves it is a volume comparison against an independent union area computed offline
+(scanline, dz 0.002 to 0.01 mm). Screenshots do not show a filled sky pocket if a tree happens to
+sit in front of it.
+
+## A profile's centroid is not reliably inside the profile (2026-08-03)
+
+The obvious way to classify an arrangement profile is `profile.areaProperties().centroid`, tested
+against the source loops. It is *nearly* right and it was still **798.6 mm^3 heavy**, because the
+centroid of a non-convex fragment can fall outside the fragment, so a few sky pockets tested as
+material and got filled.
+
+Use a **guaranteed interior point** instead. Walk the profile's outer loop, and for each edge
+midpoint step a short distance (0.05 mm, comfortably under the smallest feature) along the inward
+normal. The inward direction is fixed by the ring's signed area: for a CCW ring the interior is left
+of travel, so the inward normal of edge `(dx, dy)` is `(-dy, dx)`. Reject any sample that fails
+point-in-polygon against the ring itself, then majority-vote the survivors. See patterns.md,
+"Classify arrangement profiles by a guaranteed interior point".
+
+The give-away that something was wrong was three independent measurements of the same area
+disagreeing: scanline 12249.65 mm^2 (stable from dz 0.01 to 0.002), raster 12283.86 at 0.05 mm, CAD
+12410.19. **Two agreeing methods would not have shown which one was wrong.** CAD was the outlier.
+
+## Deleting a join silently deletes fillets downstream that reference its faces (2026-08-03)
+
+Deleting an extrude-Join to rebuild it also removed a fillet 20 entries later in the timeline, with
+**no error and no warning**. The fillet ran along an edge on the plate's front face; that face was a
+product of the join, so the fillet depended on it. The only visible symptom was the feature count
+dropping from 16 to 15 and the volume being 858 mm^3 light, which is exactly the fillet.
+
+**Snapshot the feature-name list before deleting any join, and diff it afterwards.** Do not rely on
+an exception. This recurred on all four rebuilds of the same feature, so the restore step is worth
+making unconditional rather than conditional on noticing.
+
+Order matters when you put it back. Two fillets that touch the same edge chain are not commutative;
+restoring the gusset *after* the outline ease produced a different body than restoring it *before*.
+Roll `timeline.markerPosition` to the original slot rather than appending.
+
+## Mesh density can be driven by `aspectRatio`, not by deviation (2026-08-03)
+
+A 250 x 114 x 100 mm part that is mostly flat faces exported at **427,870 triangles / 21 MB**.
+Sweeping `surfaceDeviation` from 0.01 mm to 0.05 mm changed the triangle count by **exactly zero**.
+
+The driver was `STLExportOptions.aspectRatio`, which defaults to **21.5** and subdivides large planar
+faces to keep triangles from getting long and thin. Setting it to **0 (unlimited)** gave 80,224
+triangles and 4.01 MB at identical accuracy (+0.0001% against CAD either way).
+
+| aspectRatio | triangles | size |
+|---|---|---|
+| 0 (unlimited) | 80,224 | 4.01 MB |
+| 21.5 (default) | 427,870 | 21.39 MB |
+| 50 | 228,168 | 11.41 MB |
+| 200 | 115,778 | 5.79 MB |
+| 1000 | 84,318 | 4.22 MB |
+
+**The response is not monotonic**: 50 is worse than the default. Do not reason about this value,
+measure it. For a part dominated by curvature, deviation is the lever; for a part dominated by large
+flat faces, `aspectRatio` is, and tightening deviation just wastes time.
+
+## A fillet at an acute wedge removes ~4x more material than the 90-degree estimate (2026-08-03)
+
+`(1 - pi/4) r^2` per unit length is the removal for a fillet on a **90 degree** convex edge, and it
+is exact enough to assert on to four decimals. It is only valid at 90 degrees.
+
+A 1 mm fillet on 20 edges of five hook tips removed 94.77 mm^3 against a predicted 55.8. The model
+was right and the estimate was wrong: three of the four edges per tip are square, but the fourth is
+where a 39.8 degree ramp meets the end face, an **included angle of 50.19 degrees**. The general
+form is
+
+```
+removal per unit length = r^2 * ( cot(theta/2) - (pi - theta)/2 )
+```
+
+which gives 0.2146 r^2 at 90 degrees and 0.953 r^2 at 50.2 degrees, a factor of 4.4. Re-checking
+against the general form agreed to 4.4%. **Any ramp, taper or draft breaks the 90-degree shortcut.**
+
+## `isTangentChain = True` propagates a fillet far past the edges you selected (2026-08-03)
+
+Four straight edges were selected, bounding one flat face at the front of a shelf. The fillet removed
+408.68 mm^3 against 274.5 predicted for those four edges. The chain had run around two 30 mm corner
+sweeps and back down both sides of the shelf, easing the **entire outline**: predicted removal for
+the full perimeter is 409.6, which matches.
+
+In this case the wider result was better and was kept. That is luck, not design. If the fillet must
+stay on the selected edges, pass `False`; if the chain is wanted, predict the removal for the whole
+tangent-continuous chain, not for the selection, or the assert will fire on a correct feature.
+
+## Keep diagnostics trivial inside long build scripts (2026-08-03)
+
+A format-string bug in a progress `print` (three specifiers, four arguments) threw after a 568-point
+sketch had been rebuilt and its profiles classified. A failed `execute` rolls back the **whole**
+script, so the entire correct rebuild was discarded for a typo in a status line.
+
+Compute expensive geometry first, assert on it, and keep the reporting to plain `%s` and single-value
+`%f` until the script has proven itself. Anything clever in a `print` is a rollback risk out of all
+proportion to its value.
