@@ -84,6 +84,7 @@ Each tool generates a Python script and runs it through Fusion's `execute`. It i
 - `move_component` returns `moved: false` when a joint solver overrode the move
 - `export` returns `bytes_written: 0` when nothing was written
 - `doc_state` returns `active_design: false` when no design is open
+- `doc_state` on a direct (non-parametric) design reports `design_type: "direct"`, leaves `parameters_count` / `timeline_count` as `null`, and lists them in `unavailable`; every other field, `features_count` included, is reported normally
 
 Read `result`, not just `ok`.
 

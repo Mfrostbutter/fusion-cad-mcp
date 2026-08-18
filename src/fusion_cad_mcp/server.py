@@ -45,7 +45,7 @@ def _get_adapter() -> FusionAdapter:
 
 @mcp.tool()
 def doc_state() -> dict:
-    """Summary of the active Fusion document: bodies/sketches/features count, units, dirty flag, components, parameters."""
+    """Summary of the active Fusion document: design_type (parametric/direct), bodies/sketches/features count, units, dirty flag, components, parameters, timeline. On a direct design parameters_count and timeline_count come back None and are listed in result.unavailable; every other field, features_count included, is still reported."""
     return doc_state_tool.run(_get_adapter()).to_dict()
 
 
