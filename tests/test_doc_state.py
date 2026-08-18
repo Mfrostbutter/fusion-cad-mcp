@@ -36,15 +36,10 @@ def test_build_handles_no_active_design():
 
 # ---------- generated-script behaviour, executed against a stub adsk ----------
 #
-# doc_state's whole failure mode lives inside the script Fusion runs, not in
-# the wrapper: a direct design raises RuntimeError("3 : this is not a
-# parametric design") the moment userParameters/timeline is touched. A static
-# assertion on the source cannot tell whether the guard actually catches it,
-# so the script is exec'd against a minimal stub of the adsk modules.
-#
-# The stub deliberately keeps root.features.count readable on a direct design:
-# that matches live Fusion, where the original script evaluated features.count
-# successfully and only failed at design.userParameters.
+# The failure lives inside the script Fusion runs, not the wrapper, and a static
+# assertion on the source cannot tell whether the guard catches it. So the
+# script is exec'd against a stub adsk. The stub keeps root.features.count
+# readable on a direct design, matching live Fusion.
 
 PARAMETRIC = 1
 DIRECT = 0
@@ -83,7 +78,7 @@ class _StubDesign:
 
 
 def _exec_script(design):
-    """Run the generated script against a stub adsk and return the printed JSON."""
+    """Run the generated script against a stub adsk; returns the printed JSON."""
     import contextlib
     import io as _io
     import sys
@@ -147,8 +142,7 @@ def test_script_returns_partial_state_on_direct_design():
     assert state["doc_name"] == "Part1"
     assert state["workspace"] == "FusionSolid"
 
-    # features.count works on a direct design (observed live), so it stays
-    # populated and must not be listed as unavailable.
+    # features.count works on a direct design, so it stays populated.
     assert state["features_count"] == 5
     assert "features_count" not in state["unavailable"]
 

@@ -99,16 +99,14 @@ def run(_ctx):
         b = _find_body(root, body_name)
         if b is None:
             print(json.dumps({{"ok": False, "error": "body_not_found", "name": body_name}})); return
-        # BRepBody.createComponent() is the API for "Create Components from
-        # Bodies" (world position preserved). Features.createComponentFromBodyFeatures
-        # does not exist (verified absent in Fusion 2704.1.23).
+        # BRepBody.createComponent() preserves world position.
+        # Features.createComponentFromBodyFeatures does not exist.
         new_body = b.createComponent()
         if new_body is None:
             print(json.dumps({{"ok": False, "error": "create_component_failed", "name": body_name}})); return
         new_body.parentComponent.name = comp_name
-        # createComponent() renames the moved body to the component default
-        # ("Body1"); restore the original name so name-based addressing of the
-        # body keeps working after conversion.
+        # createComponent() renames the body to the component default. Restore
+        # the original so name-based addressing survives the conversion.
         new_body.name = body_name
         converted.append({{"from_body": body_name, "to_component": comp_name}})
 
@@ -178,15 +176,10 @@ def run(_ctx):
     matrix = adsk.core.Matrix3D.create()
     matrix.translation = adsk.core.Vector3D.create({tx}, {ty}, {tz})
 {rotation_block}
-    # Compose with current transform. Do NOT roll the timeline first: rolling
-    # to the occurrence's timelineObject reverts the pending transform, which
-    # made this tool a silent no-op (ok=true, nothing moved) and crashed
-    # snapshots.add() with "Has no pending snapshot" on jointed components
-    # (verified live 2026-07-18).
-    #
-    # Occurrences made by createComponent() default to isGroundToParent=True,
-    # and snapshots.add() snaps a ground-to-parent occurrence back to its
-    # grounded position, silently reverting the move. Break the ground first.
+    # Compose with the current transform. Do NOT roll the timeline first: that
+    # reverts the pending transform, making the move a silent no-op and
+    # breaking snapshots.add() on jointed components. Ground must also be
+    # broken first, or snapshots.add() snaps the occurrence back.
     if getattr(occ, 'isGroundToParent', False):
         occ.isGroundToParent = False
     before = occ.transform2.translation
@@ -202,8 +195,7 @@ def run(_ctx):
     after_mm = [after.x * 10, after.y * 10, after.z * 10]
     moved = any(abs(a - b) > 1e-6 for a, b in zip(after_mm, before_mm))
 
-    # Embed Python values via repr() so None becomes Python None (not JSON null
-    # which would be a NameError when this script runs).
+    # repr(), not json: None must render as Python None, not null.
     print(json.dumps({{
         "ok": True,
         "component": {repr(name)},
@@ -296,9 +288,8 @@ def run(_ctx):
         occs.add(occ)
         found.append(nm)
 
-    # RigidGroups has no createInput; the API is add(occurrences, includeChildren)
-    # directly on the collection (verified live in Fusion 2704.1.23). Fusion
-    # raises when an existing joint would make the group over-constrained.
+    # RigidGroups has no createInput; add(occurrences, includeChildren) goes
+    # straight on the collection. Raises if an existing joint over-constrains it.
     try:
         rg = root.rigidGroups.add(occs, True)
     except Exception as e:
@@ -332,9 +323,8 @@ def build_create_contact_set(body_names: list[str]) -> str:
         raise ValueError("contact set requires at least 2 body names")
     return f"""\
 {_header()}
-# ContactSets requires bodies "in the context of the root component", so bodies
-# inside components must be the assembly-context proxies from occ.bRepBodies,
-# not the native bodies a plain component walk returns.
+# ContactSets needs root-context bodies: use the assembly-context proxies from
+# occ.bRepBodies, not the native bodies a plain component walk returns.
 def _find_body_proxy(root, name):
     for i in range(root.bRepBodies.count):
         b = root.bRepBodies.item(i)
@@ -363,8 +353,8 @@ def run(_ctx):
         bodies.append(b)
         found.append(nm)
 
-    # ContactSets lives on the Design (not Component) and add() takes the array
-    # directly; there is no createInput (verified live in Fusion 2704.1.23).
+    # ContactSets lives on the Design, not the Component, and add() takes the
+    # array directly. There is no createInput.
     cs = design.contactSets.add(bodies)
     if cs is None:
         print(json.dumps({{"ok": False, "error": "contact_set_add_failed", "bodies": found}})); return
@@ -462,14 +452,11 @@ def build_set_joint_limits(
     if min_value is None and max_value is None and rest_value is None:
         raise ValueError("must provide at least one of min_value, max_value, rest_value")
 
-    # Limits do NOT live on the JointMotion itself. RevoluteJointMotion exposes
-    # rotationLimits, SliderJointMotion exposes slideLimits (Cylindrical has
-    # both; we prefer rotation), each a JointLimits with isMinimumValueEnabled /
-    # minimumValue / isMaximumValueEnabled / maximumValue / isRestValueEnabled /
-    # restValue. Values are internal units (radians / cm), so expressions are
-    # evaluated via unitsManager.evaluateExpression with deg/mm as the expected
-    # measure; NOT ValueInput.createByString(...).realValue, which raises
-    # "Value does not contain a real" for string inputs (verified live 2026-07-18).
+    # Limits hang off the motion's rotationLimits (revolute) or slideLimits
+    # (slider); Cylindrical has both and rotation wins. Values are internal
+    # units (radians / cm), so expressions go through
+    # unitsManager.evaluateExpression with deg/mm as the measure.
+    # ValueInput.createByString(...).realValue raises on string inputs.
     min_block = ""
     if min_value is not None:
         min_block = (
@@ -598,10 +585,9 @@ def run(_ctx):
     if jm is None:
         print(json.dumps({{"ok": False, "error": "joint_has_no_motion", "name": {json.dumps(joint_name)}}})); return
 
-    # Drive via the first available property: rotationValue (revolute), slideValue (slider), etc.
-    # The expression is evaluated per-attribute with the matching measure (deg for
-    # rotary, mm for slide); ValueInput.createByString(...).realValue raises
-    # "Value does not contain a real" for string inputs (verified live 2026-07-18).
+    # Drive via the first available property: rotationValue, slideValue, etc.
+    # Evaluated per-attribute with the matching measure (deg rotary, mm slide).
+    # ValueInput.createByString(...).realValue raises on string inputs.
     _units_by_attr = {{'rotationValue': 'deg', 'slideValue': 'mm',
                        'rollValue': 'deg', 'pitchValue': 'deg', 'yawValue': 'deg'}}
     set_attrs = []
@@ -621,9 +607,8 @@ def run(_ctx):
         print(json.dumps({{"ok": False, "error": "no_drivable_motion_attribute",
                            "motion_class": jm.classType(), "detail": last_err}})); return
 
-    # Fusion silently ignores a drive beyond the joint's limits (no exception,
-    # value stays put; verified live 2026-07-18), so read back the actual value
-    # and surface whether the requested target was applied.
+    # A drive beyond the joint's limits is ignored silently, so read back the
+    # actual value and report whether the target was applied.
     actual = getattr(jm, set_attrs[0])
     print(json.dumps({{
         "ok": True,
@@ -777,10 +762,8 @@ def build_create_joint(
             f"        adsk.fusion.JointDirections.{axis_enum})\n"
         )
     elif motion_type == "ball":
-        # setAsBallJointMotion(pitchDirection, yawDirection): Fusion only
-        # accepts pitch=Z, yaw=X. All 8 other principal-axis combinations raise
-        # "Invalid parameter pitchDirection/yawDirection" (exhaustively verified
-        # live 2026-07-18 on Fusion 2704.1.23).
+        # setAsBallJointMotion accepts only pitch=Z, yaw=X. Every other
+        # principal-axis pair raises "Invalid parameter".
         motion_block = (
             "    joint_input.setAsBallJointMotion(\n"
             "        adsk.fusion.JointDirections.ZAxisJointDirection,\n"
@@ -835,8 +818,7 @@ def run(_ctx):
             "axis": {repr(axis)},
         }})); return
 {rename_block}
-    # Embed Python values via repr() so None becomes Python None (not JSON null
-    # which would be a NameError when this script runs).
+    # repr(), not json: None must render as Python None, not null.
     print(json.dumps({{
         "ok": True,
         "joint_name": joint.name,

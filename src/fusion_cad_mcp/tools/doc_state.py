@@ -2,21 +2,9 @@
 
 Group 1 / Document & State (V2 spec Section 4).
 
-Direct (non-parametric) designs do not expose the parametric-only halves of
-the Design API. Touching `design.userParameters` or `design.timeline` on one
-raises
-
-    RuntimeError: 3 : this is not a parametric design
-
-which used to take the whole tool down, even though every other field was
-perfectly readable. On a live direct design the original script got as far as
-`root.features.count` — that one succeeded — and only died at
-`design.userParameters`, so `features_count` is reported normally here and is
-NOT treated as parametric-only. The generated script reports `design_type` up
-front and fills only the two observed parametric-only fields through a guard
-that absorbs ONLY that specific RuntimeError, recording them under
-`unavailable`. Any other error still propagates, so a genuine failure is never
-disguised as "direct design".
+A direct (non-parametric) design raises on `design.userParameters` and
+`design.timeline`. Those two are read behind a guard and come back None under
+`unavailable`; every other field, `features_count` included, reads normally.
 """
 
 from __future__ import annotations
@@ -32,19 +20,12 @@ import adsk.core
 import adsk.fusion
 import json
 
-# Fusion's wording for the parametric-only guard. Matched on text because the
-# API raises a plain RuntimeError ("3 : this is not a parametric design") with
-# no distinguishable type or code attribute.
+# Matched on text: Fusion raises a plain RuntimeError with no code attribute.
 NOT_PARAMETRIC = "not a parametric design"
 
 
-def fill(state, unavailable, key, getter):
-    """Set state[key], or note it as unavailable on a direct design.
-
-    Only the "not a parametric design" RuntimeError is absorbed. Anything
-    else re-raises so unrelated failures surface instead of being reported
-    as a missing field.
-    """
+def _fill(state, unavailable, key, getter):
+    """Set state[key], or mark it unavailable on a direct design."""
     try:
         state[key] = getter()
     except RuntimeError as exc:
@@ -80,13 +61,10 @@ def run(_ctx):
         "components_count": root.allOccurrences.count,
     }
 
-    # Parametric-only from here down: userParameters and timeline are the two
-    # APIs observed to raise on a direct design (features.count does not). A
-    # direct design leaves these None and explains itself in "unavailable"
-    # rather than failing the whole call.
+    # Parametric-only: these two raise on a direct design, features.count does not.
     unavailable = {}
-    fill(state, unavailable, "parameters_count", lambda: design.userParameters.count)
-    fill(state, unavailable, "timeline_count", lambda: design.timeline.count)
+    _fill(state, unavailable, "parameters_count", lambda: design.userParameters.count)
+    _fill(state, unavailable, "timeline_count", lambda: design.timeline.count)
     state["unavailable"] = unavailable
 
     print(json.dumps(state))

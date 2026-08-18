@@ -134,10 +134,8 @@ def build_create_construction_plane(
     else:  # 3_points
         if not (p1 and p2 and p3 and len(p1) == 3 and len(p2) == 3 and len(p3) == 3):
             raise ValueError("kind=3_points requires p1, p2, p3 each as [x, y, z] in mm")
-        # Use sketch points wrapped in a BaseFeature? Actually setByThreePoints needs Point3D-backed entities.
-        # A common approach: create a temporary sketch with 3 sketchPoints, then pass them.
-        # Simpler: use occurrences.create...? No — the supported API takes SketchPoint or Vertex objects.
-        # Make a hidden helper sketch.
+        # setByThreePoints needs SketchPoint or Vertex objects, so stage the
+        # three points in a hidden helper sketch.
         setup = (
             f"    helper = root.sketches.add(root.xYConstructionPlane)\n"
             f"    helper.name = '_cplane_helper_3pt'\n"

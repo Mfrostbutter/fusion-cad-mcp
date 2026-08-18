@@ -101,7 +101,7 @@ def run(_ctx):
 
     {resolve_a}
     {resolve_b}
-    # Unwrap proxies if present — MeasureManager doesn't accept BRepFaceProxy etc.
+    # Unwrap proxies: MeasureManager rejects BRepFaceProxy and friends.
     _a_native = _a.nativeObject if hasattr(_a, 'nativeObject') and _a.nativeObject else _a
     _b_native = _b.nativeObject if hasattr(_b, 'nativeObject') and _b.nativeObject else _b
     _a = _a_native
@@ -345,9 +345,8 @@ def build_chamfer_edges(
     resolve = _indent4(emit_resolve_many(edge_handles, collection_var="_resolved_edges"))
     name_block = f"    feat.name = {json.dumps(name)}\n" if name else ""
 
-    # Current chamfer API: createInput2() takes no args; edge sets are added
-    # via chamferEdgeSets.add*ChamferEdgeSet (verified live in Fusion
-    # 2704.1.23; the old add*ChamferEdges methods no longer exist).
+    # createInput2() takes no args. Edge sets are added via
+    # chamferEdgeSets.add*ChamferEdgeSet; add*ChamferEdges no longer exists.
     if kind == "equal":
         chm_call = (
             f"chm_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, "
@@ -481,8 +480,8 @@ def build_list_body_entities(
     do_edges = "edge" in kinds
     do_verts = "vertex" in kinds
 
-    # Filter blocks live inside `for i in range(...):` which is itself inside `if {do_faces}:`.
-    # That makes the loop body's indent 12 spaces. Filter statements use 12; their `continue` uses 16.
+    # Filters sit in a `for` inside an `if`, so statements indent 12 and their
+    # `continue` indents 16.
     face_filter_block = ""
     if face_normal_filter is not None:
         if len(face_normal_filter) != 3:

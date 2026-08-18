@@ -43,10 +43,8 @@ try:
 except ImportError:
     HTML_PARSER = "html.parser"
 
-# Output location. Defaults to the same directory the resolver looks in first
-# (~/.fusion-cad/corpus), so a plain `fusion-cad-mcp corpus build` produces a
-# corpus the server finds with no further configuration. Overridable, because
-# the repo keeps its own dev corpus under src/api-reference/.
+# Defaults to the directory the resolver checks first, so a plain
+# `corpus build` lands where the server looks. Overridable for the dev corpus.
 DEFAULT_OUT_DIR = Path.home() / ".fusion-cad" / "corpus"
 
 OUT_DIR = DEFAULT_OUT_DIR
@@ -431,10 +429,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.i_accept_autodesk_terms:
         print(TERMS_NOTICE, file=sys.stderr)
-        # isatty() is not reliable: it reports True in some non-interactive
-        # contexts (subprocess pipes, certain terminals, CI), where input()
-        # then raises EOFError and the user gets a traceback instead of
-        # guidance. Catch it and give the same clean instruction.
+        # isatty() reports True in some non-interactive contexts, where input()
+        # raises EOFError. Catch it and print the same instruction.
         if not sys.stdin.isatty():
             print("ERROR: pass --i-accept-autodesk-terms in non-interactive runs.", file=sys.stderr)
             return 2
@@ -465,9 +461,8 @@ def main(argv: list[str] | None = None) -> int:
         log("Interrupted by user")
         return 130
 
-    # Safety net: a resume that scrapes nothing and recovered no frontier has
-    # not finished the crawl, it has lost it. Fail loudly rather than let the
-    # caller print "Corpus ready" over a near-empty corpus.
+    # A resume that scrapes nothing and recovers no frontier lost the crawl
+    # rather than finishing it. Fail loudly instead of claiming success.
     if (
         args.resume
         and manifest["scraped"] == 0

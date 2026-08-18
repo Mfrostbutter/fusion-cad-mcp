@@ -234,9 +234,8 @@ def build_add_rectangle(
     line_handles = []
     for idx in new_indices:
         ln = sk.sketchCurves.sketchLines.item(idx)
-        # SketchLine itself doesn't have entityToken; the underlying body curves do (after compute)
-        # but the points (startSketchPoint/endSketchPoint) DO have entityToken.
-        # For now, emit 'point' handles for the endpoints so other tools (constraints, dims) can target them.
+        # SketchLine has no entityToken but its endpoints do, so emit 'point'
+        # handles for them and let constraints and dims target those.
         try:
             start_tok = ln.startSketchPoint.entityToken
             end_tok = ln.endSketchPoint.entityToken
@@ -661,15 +660,11 @@ def assert_profiles(adapter: FusionAdapter, sketch: str, expected: int) -> Envel
 
 # ---------- probe_sketch_dimensions ----------
 
-# Shared script fragment: ambiguity-aware sketch lookup across root + every
-# sub-component. Returns (sketch, owner_component_name, ambiguity_matches).
-# - ambiguity_matches is None when resolved cleanly.
-# - When the name matches >1 sketch in the search scope, ambiguity_matches is
-#   a list of {"component", "sketch"} entries so the caller can disambiguate
-#   in one follow-up call with component_name set.
-# - comp_hint resolution: if hint matches exactly 1 sketch -> resolve. If hint
-#   matches 0 -> fall through to global search. If hint matches >1 -> still
-#   ambiguous (within the hinted component).
+# Shared script fragment: sketch lookup across root and every sub-component.
+# Returns (sketch, owner_component_name, ambiguity_matches), where
+# ambiguity_matches is None when resolved cleanly and otherwise a list of
+# {"component", "sketch"} the caller re-sends with component_name set.
+# comp_hint matching 0 sketches falls through to the global search.
 _SKETCH_RESOLVER = r"""
 def _find_all_sketches(comp, name):
     out = []

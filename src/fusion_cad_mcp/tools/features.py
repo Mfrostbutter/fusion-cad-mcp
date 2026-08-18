@@ -410,9 +410,8 @@ def build_chamfer_edges_by_geometry(
             "abs(sp.x - ep.x) < 1e-6 and abs(sp.y - ep.y) < 1e-6 and abs(sp.z - ep.z) > 1e-6"
         )
 
-    # Current chamfer API: createInput2() takes no args; edge sets are added
-    # via chamferEdgeSets.add*ChamferEdgeSet (verified live in Fusion
-    # 2704.1.23; the old add*ChamferEdges methods no longer exist).
+    # createInput2() takes no args. Edge sets are added via
+    # chamferEdgeSets.add*ChamferEdgeSet; add*ChamferEdges no longer exists.
     if kind == "equal":
         chm_call = (
             f"chm_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, "
@@ -588,15 +587,10 @@ def build_pattern_rectangular(
     x_axis_expr = _resolve_axis_expr(x_axis)
     y_axis_expr = _resolve_axis_expr(y_axis) if y_axis else "None"
 
-    # Fusion does NOT treat an unset direction two as "one row". Leaving it
-    # undefined makes every instance come back as 3 coincident bodies (verified
-    # against a live Fusion build: qty=1 -> 3 bodies, qty=4 -> 12 bodies, all at
-    # the correct X positions). setDirectionTwo must always be called; when the
-    # caller wants a single-direction pattern we pin it to quantity 1 / 0 mm.
-    #
-    # The fallback axis must differ from the primary axis, or Fusion rejects the
-    # input. Principal names are known at build time; a named construction axis
-    # falls back to Y, which is the safe default for the common X-direction case.
+    # setDirectionTwo must always be called: an unset direction two yields
+    # coincident duplicate bodies, not one row. Single-direction patterns pin it
+    # to quantity 1 / 0 mm. The fallback axis must differ from the primary axis
+    # or Fusion rejects the input; a named axis falls back to Y.
     _fallback = "z" if str(x_axis).lower() == "y" else "y"
     dir_two_fallback_expr = PRINCIPAL_AXES[_fallback]
 
@@ -634,8 +628,7 @@ def run(_ctx):
     if target is None:
         print(json.dumps({{"ok": False, "error": "target_not_found", "name": {json.dumps(feature_or_body)}}})); return
 
-    # Embed Python values via repr() so None becomes Python None (not JSON null
-    # which would be a NameError when this script runs).
+    # repr(), not json: None must render as Python None, not null.
     x_axis = {x_axis_expr}
     y_axis = {y_axis_expr}
     if x_axis is None:
@@ -1015,9 +1008,8 @@ def build_shell(
     if direction not in {"inside", "outside", "both"}:
         raise ValueError(f"direction must be inside/outside/both, got {direction!r}")
 
-    # ShellFeatureInput has no direction enum (adsk.fusion.ThicknessDirections
-    # does not exist; verified live 2026-07-18). Direction is expressed by
-    # which of the two independent thickness properties get set.
+    # ShellFeatureInput has no direction enum (ThicknessDirections does not
+    # exist). Direction comes from which thickness property is set.
     if direction == "inside":
         thickness_setters = f"shell_in.insideThickness = adsk.core.ValueInput.createByString({json.dumps(thickness)})"
     elif direction == "outside":
@@ -1049,8 +1041,8 @@ def build_shell(
     removed_count = target_faces.count
 """
     else:
-        # Closed shell: the input entities must contain the body itself; an
-        # empty collection is rejected by ShellFeatures.add.
+        # Closed shell: input entities must hold the body itself; ShellFeatures.add
+        # rejects an empty collection.
         face_finder = (
             "    target_faces = adsk.core.ObjectCollection.create()\n"
             "    target_faces.add(body)  # no faces removed = closed (hollow) shell\n"
@@ -1260,10 +1252,8 @@ def rib(
     extend_profile: bool = True,
     name: str | None = None,
 ) -> Envelope:
-    # RibFeatures is a read-only collection in the current Fusion API
-    # (2704.1.23): it has item/itemByName/count but no createInput or add, so
-    # ribs cannot be created via script at all (verified live 2026-07-18).
-    # Surface that as a structured error instead of crashing inside Fusion.
+    # RibFeatures is read-only (item/itemByName/count, no createInput or add), so
+    # ribs cannot be scripted. Return a structured error instead of crashing.
     return Envelope(
         ok=False,
         error="rib_not_scriptable",
@@ -1353,11 +1343,9 @@ def run(_ctx):
     if body is None:
         print(json.dumps({{"ok": False, "error": "body_not_found", "name": {json.dumps(body)}}})); return
 
-    # Prefer the highest +Z face whose XY extent contains the requested
-    # position; only fall back to the tallest +Z face overall when none does.
-    # Always picking the tallest face made holes aimed at a lower step start
-    # in mid-air above it: "No target body found" for distance extents, wrong
-    # start plane for through-all (verified live 2026-07-18).
+    # Highest +Z face whose XY extent contains the position, falling back to the
+    # tallest +Z face. Tallest-always starts holes aimed at a lower step in
+    # mid-air above it.
     _tx = {target_x / 10}
     _ty = {target_y / 10}
     top_face = None
@@ -1509,11 +1497,10 @@ def _find_hinted(root, hint):
     return (f, c) if f is not None else _find_feature_anywhere(root, FEATURE_NAME)
 
 
-# Ambiguity-aware sketch resolver. Returns (sketch, owner_component_name,
-# ambiguity_matches_or_None). When the name matches >1 sketch in the search
-# scope, ambiguity_matches is a list of {{"component", "sketch"}} entries so
-# the caller can disambiguate. comp_hint of None searches whole tree; a hint
-# matching 1 sketch resolves; 0 falls through to global; >1 is still ambiguous.
+# Resolve a sketch by name. Returns (sketch, owner_component_name, ambiguity),
+# where ambiguity is a list of {{"component", "sketch"}} when the name matches
+# more than one sketch in scope. comp_hint None searches the whole tree; a hint
+# matching 0 falls through to global.
 def _find_all_sketches(comp, name):
     out = []
     for i in range(comp.sketches.count):
@@ -1543,18 +1530,14 @@ def _resolve_sketch(root, name, comp_hint):
 
 
 def _capture_extrude(ft):
-    # Capture ExtrudeFeature inputs needed for re-creation. Returns dict.
-    # Sets unsupported_extent / unsupported_start fields for extents/starts
-    # not handled yet. ALWAYS store profile_areas as a list (even for the
-    # single-profile case) so recreate can rebuild N profiles uniformly.
-    # Captures the parent component of the sketch so recreate can disambiguate
-    # when the sketch name is shared across components.
+    # Capture ExtrudeFeature inputs for re-creation. Unhandled extents/starts set
+    # unsupported_extent / unsupported_start. profile_areas is always a list so
+    # recreate rebuilds N profiles uniformly; the sketch's parent component is
+    # captured to disambiguate names shared across components.
     info = {{"class": "ExtrudeFeature"}}
     info["operation"] = ft.operation  # int enum
-    # Profile reference. On a stale feature whose sketch curves were deleted,
-    # the .profile getter itself raises InternalValidationError; treat that as
-    # unrebuildable so preflight preserves the original feature instead of the
-    # script crashing (verified live 2026-07-18).
+    # .profile raises InternalValidationError once the sketch curves are deleted.
+    # Treat as unrebuildable so preflight preserves the original feature.
     try:
         prof = ft.profile
     except Exception as e:
@@ -1568,8 +1551,8 @@ def _capture_extrude(ft):
             info["sketch_owner_component"] = None
         info["profile_count"] = 1
         try:
-            # areaProperties is a method, not a property; the property form
-            # silently returned None areas so matching always fell back.
+            # areaProperties is a method; the property form returns None areas and
+            # matching always falls back.
             info["profile_areas"] = [prof.areaProperties().area]
         except Exception:
             info["profile_areas"] = [None]
@@ -1649,9 +1632,8 @@ def _capture_extrude(ft):
 
 
 def _preflight_check(captured):
-    # Return a non-None error dict if the captured state is unrebuildable.
-    # MUST be called BEFORE deleteMe() so we never leave the design in a
-    # deleted-but-not-recreated state for known-bad shapes.
+    # Non-None error dict when the captured state is unrebuildable. Must run
+    # before deleteMe() or a known-bad shape is deleted and never recreated.
     if "unsupported" in captured:
         return {{"error": "unsupported_profile_shape", "detail": captured["unsupported"]}}
     if "unsupported_extent" in captured:
@@ -1664,8 +1646,8 @@ def _preflight_check(captured):
         return {{"error": "two_sided_extrude_not_supported"}}
     if not captured.get("sketch_name"):
         return {{"error": "sketch_name_unknown"}}
-    # Resolve the sketch BEFORE delete so duplicate-name ambiguity bails early
-    # rather than after destroying the original feature.
+    # Resolve before delete so duplicate-name ambiguity bails before the
+    # original feature is destroyed.
     app = adsk.core.Application.get()
     design = adsk.fusion.Design.cast(app.activeProduct)
     sk_name = captured["sketch_name"]
@@ -1680,9 +1662,8 @@ def _preflight_check(captured):
         }}
     if sk is None:
         return {{"error": "sketch_not_found", "name": sk_name}}
-    # A sketch that resolved but has no closed profiles would pass preflight,
-    # let deleteMe() run, then fail recreation, destroying the feature. Check
-    # here so the original feature is preserved.
+    # A resolved sketch with no closed profiles passes preflight, then fails
+    # recreation after deleteMe() has destroyed the feature. Check here.
     if sk.profiles.count == 0:
         return {{"error": "sketch_has_no_profiles", "name": sk_name}}
     return None
@@ -1694,8 +1675,8 @@ def _recreate_extrude(comp, captured, old_name):
     sk_name = captured["sketch_name"]
     app = adsk.core.Application.get()
     design = adsk.fusion.Design.cast(app.activeProduct)
-    # Use the captured owner component as the resolution hint so duplicate
-    # sketch names across components still bind to the right one.
+    # Captured owner component as the hint so duplicate sketch names across
+    # components still bind to the right one.
     owner_hint = captured.get("sketch_owner_component")
     sk, owner, ambig = _resolve_sketch(design.rootComponent, sk_name, owner_hint)
     if ambig is not None:
@@ -1839,7 +1820,7 @@ def run(_ctx):
         return
     new_feat, err = _recreate_extrude(comp, captured, old_name)
     if err is not None:
-        # Feature was deleted but we couldn't re-create — surface clearly
+        # Deleted but not re-created: surface clearly.
         err["ok"] = False
         err["feature_name"] = old_name
         err["captured"] = captured

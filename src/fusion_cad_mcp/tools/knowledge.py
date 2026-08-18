@@ -53,10 +53,8 @@ def _resolve_corpus_dir() -> Path | None:
     return None
 
 
-# Knowledge markdown bundled inside the installed package. Unlike the API
-# corpus (Autodesk content, never redistributed), these are our own docs, so
-# they ship with the wheel and find_pattern / find_gotcha / find_tool work on a
-# plain `pip install` with no setup.
+# Our own docs, so unlike the Autodesk API corpus they ship inside the wheel
+# and find_pattern / find_gotcha / find_tool work on a plain `pip install`.
 PACKAGED_KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "knowledge"
 
 
